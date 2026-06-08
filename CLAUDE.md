@@ -70,7 +70,7 @@ Trainline `#02a88f` · Renfe `#81015e` · Ouigo `#e3006a` · iryo `#d30e17` · T
 Target: a git repo connected to Netlify so `git push` auto-deploys (currently the live site is `singular-mochi-83fc9c`). Until then, deploys are manual drag-and-drop of `index.html` into Netlify.
 
 ## Backlog / to-do
-- **Re-add the password gate.** It was temporarily removed for debugging. The `APP_PASSWORD` constant ("FY27") is still in the file; the lock-screen UI and boot logic were stripped and need restoring.
+- **Edit lock (done, soft).** The app loads read-only; a top-bar "🔒 View only" button prompts for a shared password to enable editing (paint/drag, add/edit/dup/delete, range). Password is stored as a SHA-256 hash in `APP_EDIT_HASH` (currently "FY27"); change it by hashing a new word (`printf '%s' 'NEW' | shasum -a 256`). While locked, `scheduleSave` no-ops so view tweaks (zoom/collapse) never persist. **This is UI-only — not real security:** the public source reveals the hash, and the anon key + disabled RLS still allow direct DB writes. For real protection, gate writes server-side (RLS read-only anon + an Edge Function that checks the password).
 - **Slack automation:** notify a channel when a campaign hits its end date; optionally a weekly digest and status-change alerts. Best as a scheduled job (Supabase Edge Function / cron / Make.com) reading the same `gtm-state` table — not browser-side, so it fires even when no one has the calendar open.
 - Optional polish: replace native `confirm()`/`alert()` with in-page dialogs.
 - Possibly seed Italy with starter campaigns (currently empty).

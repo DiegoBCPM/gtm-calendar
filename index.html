@@ -115,6 +115,7 @@ button{font-family:inherit;cursor:pointer}
   background-repeat:no-repeat,repeat,repeat;
   background-position:var(--tdyx,-50px) 0,var(--wkoff,0) 0,0 0}
 .lane.paintable{cursor:crosshair}
+.grid.locked .lane.paintable{cursor:default}
 
 /* ── Header ── */
 .hrow{position:sticky;top:0;z-index:9;border-bottom:1px solid var(--line2)}
@@ -254,7 +255,8 @@ button{font-family:inherit;cursor:pointer}
     </div>
     <div class="spacer"></div>
     <div class="save-ind synced" id="saveInd" title=""><span class="dot"></span><span class="stxt">Synced</span></div>
-    <button class="btn primary" data-action="add-campaign">+ New campaign</button>
+    <button class="btn" id="lockBtn" data-action="toggle-lock">🔒 View only — click to edit</button>
+    <button class="btn primary" id="addBtn" data-action="add-campaign" style="display:none">+ New campaign</button>
   </div>
 
   <div class="legendbar" id="legend"></div>
@@ -273,9 +275,17 @@ button{font-family:inherit;cursor:pointer}
 
 <script>
 /* =====================================================
-   PASSWORD
+   EDIT LOCK  (soft, UI-only — see CLAUDE.md for caveats)
+   View is always open; editing requires the shared password.
+   APP_EDIT_HASH = SHA-256 of the password (currently "FY27").
+   To change it: hash a new word and replace this string.
    ===================================================== */
-const APP_PASSWORD = "FY27";
+const APP_EDIT_HASH = "4364651c17063ebf2da06c6ca86ce70a049d298a6ae811b119b7760da333a3de";
+let canEdit = false;   // flipped true once the correct password is entered
+async function sha256(str){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
 
 /* =====================================================
    SUPABASE CONFIG  —  anon key only, safe for browser
@@ -422,6 +432,7 @@ async function loadState(){
 }
 
 function scheduleSave(){
+  if(!canEdit) return;   // view-only: never persist (incl. local view toggles)
   setSave("syncing");
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveState, 700);
@@ -447,7 +458,7 @@ function setSave(k){
 async function switchMarket(market){
   if(market===activeMarket) return;
   clearTimeout(saveTimer);
-  await dbSave(activeMarket, state);      // persist current before switching
+  if(canEdit) await dbSave(activeMarket, state);      // persist current before switching (edit mode only)
   activeMarket = market;
   if(_states[market]){
     state = _states[market];
@@ -522,6 +533,7 @@ function render(){
   const firstSat=(6-w0+7)%7;
   const tStr=todayStr(), tShown=inRange(tStr), tIdx=tShown?dayIndex(tStr):-1;
 
+  grid.classList.toggle("locked", !canEdit);
   grid.style.setProperty("--dw",   dw+"px");
   grid.style.setProperty("--tlw",  tlw+"px");
   grid.style.setProperty("--wkoff",(firstSat*dw)+"px");
@@ -573,10 +585,10 @@ function campaignHTML(c){
         </div>
       </div>
       <div class="cacts">
-        <button title="Duplicate" data-action="dup-campaign" data-campaign="${cid}">⎘</button>
-        <button title="Edit" data-action="edit-campaign" data-campaign="${cid}">✎</button>
+        ${canEdit?`<button title="Duplicate" data-action="dup-campaign" data-campaign="${cid}">⎘</button>`:""}
+        ${canEdit?`<button title="Edit" data-action="edit-campaign" data-campaign="${cid}">✎</button>`:""}
         <button title="${c.briefingUrl?"Open briefing":"No briefing URL"}" data-action="brief-campaign" data-campaign="${cid}" ${c.briefingUrl?"":"disabled"}>🔗</button>
-        <button title="Delete" data-action="del-campaign" data-campaign="${cid}">🗑</button>
+        ${canEdit?`<button title="Delete" data-action="del-campaign" data-campaign="${cid}">🗑</button>`:""}
       </div>
     </div>
     <div class="lane clane paintable" data-paint="1" data-campaign="${cid}" data-cat="campaign" data-asset="${ASSET_CAMPAIGN}">
@@ -673,6 +685,7 @@ function renderLegend(){
 let drag=null;
 
 grid.addEventListener("pointerdown", e=>{
+  if(!canEdit) return;   // view-only: no painting, moving, resizing, or bar menu
   const bar=e.target.closest('.bar[data-editable="1"]');
   if(bar){
     e.preventDefault();
@@ -776,6 +789,26 @@ function openActMenu(act,barEl,e){
 }
 
 /* =====================================================
+   EDIT LOCK UI
+   ===================================================== */
+async function toggleLock(){
+  if(canEdit){ canEdit=false; updateLockUI(); render(); return; }
+  const pw = prompt("Enter the edit password to make changes:");
+  if(pw===null) return;                       // cancelled
+  if(await sha256(pw) === APP_EDIT_HASH){ canEdit=true; updateLockUI(); render(); }
+  else alert("Incorrect password — staying in view-only mode.");
+}
+function updateLockUI(){
+  const b=document.getElementById("lockBtn");
+  if(b){
+    b.textContent = canEdit ? "🔓 Editing — click to lock" : "🔒 View only — click to edit";
+    b.classList.toggle("primary", canEdit);
+  }
+  const add=document.getElementById("addBtn");
+  if(add) add.style.display = canEdit ? "" : "none";
+}
+
+/* =====================================================
    TOOLBAR ACTIONS
    ===================================================== */
 document.getElementById("saveInd").addEventListener("click",()=>{
@@ -785,7 +818,10 @@ document.getElementById("saveInd").addEventListener("click",()=>{
 document.getElementById("app").addEventListener("click", async e=>{
   const t=e.target.closest("[data-action]"); if(!t) return;
   const action=t.dataset.action, cid=t.dataset.campaign;
+  // Edit actions are inert while locked (buttons are also hidden, this is a backstop)
+  if(!canEdit && ["add-campaign","edit-campaign","dup-campaign","del-campaign"].includes(action)) return;
   switch(action){
+    case "toggle-lock":   await toggleLock(); break;
     case "switch-tab":    await switchMarket(t.dataset.tab); break;
     case "add-campaign":  openCampaignForm(null); break;
     case "edit-campaign": openCampaignForm(cid); break;
@@ -803,11 +839,13 @@ document.getElementById("app").addEventListener("click", async e=>{
 });
 
 document.getElementById("fromDate").addEventListener("change",e=>{
+  if(!canEdit){ e.target.value=state.range.from; return; }
   const v=e.target.value; if(!v) return;
   if(diff(v,state.range.to)<0){alert("From must be before To."); e.target.value=state.range.from; return;}
   state.range.from=v; render(); scheduleSave();
 });
 document.getElementById("toDate").addEventListener("change",e=>{
+  if(!canEdit){ e.target.value=state.range.to; return; }
   const v=e.target.value; if(!v) return;
   if(diff(state.range.from,v)<0){alert("To must be after From."); e.target.value=state.range.to; return;}
   state.range.to=v; render(); scheduleSave();
@@ -908,6 +946,7 @@ function openCampaignForm(cid){
 (async function init(){
   await loadState();
   updateMarketUI();
+  updateLockUI();
   render();
   const t=todayStr();
   if(inRange(t)) scroll.scrollLeft=Math.max(0,dayIndex(t)*state.dayWidth-260);
