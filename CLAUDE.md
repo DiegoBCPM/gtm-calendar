@@ -36,9 +36,16 @@ state = {
   hiddenCategories: {},        // legend show/hide filters
   campaigns: [ Campaign ]
 }
-Campaign   = { id, name, mkFunds, start, end, status, flightDetail, owner, briefingUrl, collapsed, brandColor, activations: [Activation] }
+Campaign   = { id, name, mkFunds, start, end, status, notes, owner, briefingUrl, collapsed, brandColor,
+               international, hasPromo, promoDetail, promoUrl, activations: [Activation] }
 Activation = { id, category, asset, start, end, status }
 ```
+Notes on campaign fields:
+- `notes` — free-text notes (renamed from the old `flightDetail`; legacy values auto-migrate via `migrate()`).
+- `international` — true if the campaign is international, false = domestic only. Shown as a 🌍 Intl pill.
+- `hasPromo` / `promoDetail` / `promoUrl` — promotion flag + details + link. When `hasPromo`, a 🎁 Promo pill shows (clickable → `promoUrl`).
+- Campaigns are auto-sorted by `start` ascending on every render (earliest at top); manual ordering isn't persisted.
+
 Special activations:
 - `category: "campaign"` → painted on the campaign header row; rendered in the campaign's **brand colour**.
 - `asset: "__category__"` → painted on a category header row.

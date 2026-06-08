@@ -145,6 +145,7 @@ button{font-family:inherit;cursor:pointer}
 .ctags{display:flex;gap:5px;align-items:center}
 .pill{font-size:9.5px;font-weight:600;padding:2px 7px;border-radius:999px;white-space:nowrap}
 .pill.mk.yes{background:#dcfce7;color:#15803d} .pill.mk.no{background:#f3f4f6;color:#6b7280}
+.pill.intl{background:#e0f2fe;color:#0369a1} .pill.promo{background:#fef3c7;color:#b45309} .pill.promo.link{cursor:pointer}
 .st-Planning{background:#f3f4f6;color:#6b7280} .st-Briefed{background:#eff6ff;color:#1d4ed8}
 .st-Live{background:#dcfce7;color:#15803d} .st-Done{background:#f3f4f6;color:#6b7280}
 .cacts{display:flex;gap:1px;flex-shrink:0}
@@ -210,10 +211,15 @@ button{font-family:inherit;cursor:pointer}
 .field{margin-bottom:13px}
 .field label{display:block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
   color:var(--ink2);margin-bottom:5px}
-.field input,.field select{width:100%;padding:9px 10px;border:1px solid var(--line2);border-radius:9px;
+.field input,.field select,.field textarea{width:100%;padding:9px 10px;border:1px solid var(--line2);border-radius:9px;
   font-size:13px;font-family:inherit;outline:none;color:var(--ink);background:#fff}
-.field input:focus,.field select:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.field textarea{resize:vertical;line-height:1.45;min-height:60px}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
 .frow{display:flex;gap:12px} .frow .field{flex:1}
+.checks{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:13px}
+.checkrow{display:flex;align-items:center;gap:8px}
+.checkrow input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:#3b82f6;flex-shrink:0}
+.checkrow label{margin:0;text-transform:none;letter-spacing:0;font-size:12.5px;font-weight:500;color:var(--ink);cursor:pointer}
 .swatches{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:.15s;flex-shrink:0}
 .swatch:hover{transform:scale(1.12)}
@@ -367,14 +373,16 @@ function seedState(market){
     const mkSEO = a => ({id:uid(),category:"SEO",asset:a,start:"2026-02-27",end:"2026-03-04",status:"Live"});
     base.campaigns = [
       { id:uid(), name:"RENFE FALLAS 2026", mkFunds:true, start:"2026-02-26", end:"2026-03-19",
-        status:"Live", flightDetail:"Feb 26 – Mar 19", owner:"", briefingUrl:"",
+        status:"Live", notes:"Feb 26 – Mar 19", owner:"", briefingUrl:"",
+        international:false, hasPromo:false, promoDetail:"", promoUrl:"",
         collapsed:false, brandColor:"#81015e",
         activations:[
           {id:uid(),category:"campaign",asset:ASSET_CAMPAIGN,start:"2026-02-26",end:"2026-03-19",status:"Live"},
           ...TAXONOMY[0].assets.map(mkSEO)
         ]},
       { id:uid(), name:"OUIGO ODV", mkFunds:true, start:"2026-03-05", end:"2026-03-08",
-        status:"Planning", flightDetail:"Mar 5 – Mar 8", owner:"", briefingUrl:"",
+        status:"Planning", notes:"Mar 5 – Mar 8", owner:"", briefingUrl:"",
+        international:false, hasPromo:false, promoDetail:"", promoUrl:"",
         collapsed:false, brandColor:"#e3006a",
         activations:[
           {id:uid(),category:"campaign",asset:ASSET_CAMPAIGN,start:"2026-03-05",end:"2026-03-08",status:"Planning"}
@@ -391,7 +399,12 @@ function migrate(s){
   s.hiddenCategories = s.hiddenCategories||{};
   s.campaigns = (s.campaigns||[]).map(c=>({
     ...c, activations:c.activations||[],
-    collapsed:c.collapsed??false, brandColor:c.brandColor||""
+    collapsed:c.collapsed??false, brandColor:c.brandColor||"",
+    notes:(c.notes ?? c.flightDetail ?? ""),   // legacy flightDetail carries over into notes
+    international:c.international??false,
+    hasPromo:c.hasPromo??false,
+    promoDetail:c.promoDetail||"",
+    promoUrl:c.promoUrl||""
   }));
   return s;
 }
@@ -499,6 +512,8 @@ const grid  = document.getElementById("grid");
 const scroll= document.getElementById("scroll");
 
 function render(){
+  // Auto-organise: earliest start date at the top
+  state.campaigns.sort((a,b)=>(a.start||"").localeCompare(b.start||"")||(a.name||"").localeCompare(b.name||""));
   document.getElementById("fromDate").value = state.range.from;
   document.getElementById("toDate").value   = state.range.to;
 
@@ -553,6 +568,8 @@ function campaignHTML(c){
         <div class="ctags">
           <span class="pill mk ${c.mkFunds?"yes":"no"}">MK ${c.mkFunds?"Yes":"No"}</span>
           <span class="pill ${stCls(c.status)}">${c.status}</span>
+          ${c.international?`<span class="pill intl" title="International campaign">🌍 Intl</span>`:""}
+          ${c.hasPromo?`<span class="pill promo${c.promoUrl?" link":""}" ${c.promoUrl?`data-action="promo-campaign" data-campaign="${cid}"`:""} title="${esc(c.promoDetail||"Promotion")}">🎁 Promo</span>`:""}
         </div>
       </div>
       <div class="cacts">
@@ -775,6 +792,7 @@ document.getElementById("app").addEventListener("click", async e=>{
     case "dup-campaign":  dupCampaign(cid); break;
     case "del-campaign":  delCampaign(cid); break;
     case "brief-campaign":{ const c=findCampaign(cid); if(c?.briefingUrl) window.open(c.briefingUrl,"_blank","noopener"); break; }
+    case "promo-campaign":{ const c=findCampaign(cid); if(c?.promoUrl) window.open(c.promoUrl,"_blank","noopener"); break; }
     case "toggle-campaign":{ const c=findCampaign(cid); c.collapsed=!c.collapsed; render(); scheduleSave(); break; }
     case "toggle-category":{ const k=t.dataset.cat; state.collapsedCategories[k]=!state.collapsedCategories[k]; render(); scheduleSave(); break; }
     case "toggle-legend":{ const k=t.dataset.cat; state.hiddenCategories[k]=!state.hiddenCategories[k]; render(); scheduleSave(); break; }
@@ -814,7 +832,7 @@ function delCampaign(cid){
    ===================================================== */
 function openCampaignForm(cid){
   const editing=!!cid;
-  const c=editing?findCampaign(cid):{name:"",start:state.range.from,end:state.range.from,mkFunds:true,status:"Planning",flightDetail:"",owner:"",briefingUrl:"",brandColor:""};
+  const c=editing?findCampaign(cid):{name:"",start:state.range.from,end:state.range.from,mkFunds:true,status:"Planning",notes:"",owner:"",briefingUrl:"",brandColor:"",international:false,hasPromo:false,promoDetail:"",promoUrl:""};
   let sel=c.brandColor||"";
   const scrim=document.createElement("div"); scrim.className="scrim";
   const sw=[
@@ -832,7 +850,15 @@ function openCampaignForm(cid){
       <div class="field"><label>Status</label><select id="f_status">${STATUSES.map(s=>`<option ${s===c.status?"selected":""}>${s}</option>`).join("")}</select></div>
     </div>
     <div class="field"><label>Brand colour</label><div class="swatches">${sw}</div></div>
-    <div class="field"><label>Flight detail</label><input id="f_flight" value="${esc(c.flightDetail||"")}" placeholder="e.g. Feb 26 – Mar 19"></div>
+    <div class="field"><label>Notes</label><textarea id="f_notes" rows="3" placeholder="Any notes about this campaign…">${esc(c.notes||"")}</textarea></div>
+    <div class="checks">
+      <div class="checkrow"><input type="checkbox" id="f_intl" ${c.international?"checked":""}><label for="f_intl">International (not domestic-only)</label></div>
+      <div class="checkrow"><input type="checkbox" id="f_promo" ${c.hasPromo?"checked":""}><label for="f_promo">Has promotion</label></div>
+    </div>
+    <div id="promoFields" style="${c.hasPromo?"":"display:none"}">
+      <div class="field"><label>Promo details</label><input id="f_promodetail" value="${esc(c.promoDetail||"")}" placeholder="e.g. 20% off all routes"></div>
+      <div class="field"><label>Promo URL</label><input id="f_promourl" value="${esc(c.promoUrl||"")}" placeholder="https://…"></div>
+    </div>
     <div class="frow">
       <div class="field"><label>Owner</label><input id="f_owner" value="${esc(c.owner||"")}" placeholder="Name"></div>
       <div class="field"><label>Briefing URL</label><input id="f_url" value="${esc(c.briefingUrl||"")}" placeholder="https://…"></div>
@@ -844,6 +870,8 @@ function openCampaignForm(cid){
   scrim.querySelectorAll(".swatch").forEach(sw=>sw.addEventListener("click",()=>{
     sel=sw.dataset.col; scrim.querySelectorAll(".swatch").forEach(s=>s.classList.toggle("sel",s.dataset.col===sel));
   }));
+  const promoChk=scrim.querySelector("#f_promo"), promoFields=scrim.querySelector("#promoFields");
+  promoChk.addEventListener("change",()=>{ promoFields.style.display=promoChk.checked?"":"none"; });
   const close=()=>scrim.remove();
   scrim.addEventListener("click",e=>{ if(e.target===scrim) close(); });
   scrim.querySelector("#f_cancel").addEventListener("click",close);
@@ -859,7 +887,11 @@ function openCampaignForm(cid){
     const data={name,start,end,
       mkFunds:scrim.querySelector("#f_mk").value==="yes",
       status:scrim.querySelector("#f_status").value,
-      flightDetail:scrim.querySelector("#f_flight").value.trim(),
+      notes:scrim.querySelector("#f_notes").value.trim(),
+      international:scrim.querySelector("#f_intl").checked,
+      hasPromo:scrim.querySelector("#f_promo").checked,
+      promoDetail:scrim.querySelector("#f_promodetail").value.trim(),
+      promoUrl:scrim.querySelector("#f_promourl").value.trim(),
       owner:scrim.querySelector("#f_owner").value.trim(),
       briefingUrl:scrim.querySelector("#f_url").value.trim(),
       brandColor:sel};
