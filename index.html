@@ -209,6 +209,10 @@ button{font-family:inherit;cursor:pointer}
 .modal{width:460px;max-width:94vw;background:#fff;border:1px solid var(--line2);border-radius:18px;
   box-shadow:0 32px 72px -32px rgba(30,20,60,.55);padding:24px 24px 18px}
 .modal h2{font-size:20px;font-weight:700;margin:0 0 18px}
+.modal .ro-hint{margin:-12px 0 16px;font-size:12px;color:var(--ink2);line-height:1.4}
+.field input:disabled,.field select:disabled,.field textarea:disabled{background:#f9fafb;color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1;cursor:default}
+.checkrow input:disabled{cursor:default} .checkrow input:disabled+label{cursor:default;opacity:.8}
+.swatches.ro{opacity:.75;pointer-events:none}
 .field{margin-bottom:13px}
 .field label{display:block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
   color:var(--ink2);margin-bottom:5px}
@@ -236,7 +240,7 @@ button{font-family:inherit;cursor:pointer}
   <div class="topbar">
     <div class="brand">
       <div class="ico">T</div>
-      <div class="bl"><span class="b1" id="brandTitle">Trainline España · GTM Calendar</span><span class="b2">Campaign &amp; channel tracker</span></div>
+      <div class="bl"><span class="b1" id="brandTitle">Trainline ES &amp; IT GTM Calendar</span><span class="b2">Campaign &amp; channel tracker</span></div>
     </div>
     <div class="divider"></div>
     <div class="market-tabs">
@@ -476,8 +480,7 @@ function showLoading(show){
 }
 
 function updateMarketUI(){
-  document.getElementById("brandTitle").textContent =
-    `Trainline ${activeMarket==="ES"?"España":"Italia"} · GTM Calendar`;
+  document.getElementById("brandTitle").textContent = "Trainline ES & IT GTM Calendar";
   document.querySelectorAll(".mtab").forEach(b=>
     b.classList.toggle("active", b.dataset.tab===activeMarket));
 }
@@ -587,6 +590,7 @@ function campaignHTML(c){
       <div class="cacts">
         ${canEdit?`<button title="Duplicate" data-action="dup-campaign" data-campaign="${cid}">⎘</button>`:""}
         ${canEdit?`<button title="Edit" data-action="edit-campaign" data-campaign="${cid}">✎</button>`:""}
+        <button title="Campaign info" data-action="info-campaign" data-campaign="${cid}">ℹ️</button>
         <button title="${c.briefingUrl?"Open briefing":"No briefing URL"}" data-action="brief-campaign" data-campaign="${cid}" ${c.briefingUrl?"":"disabled"}>🔗</button>
         ${canEdit?`<button title="Delete" data-action="del-campaign" data-campaign="${cid}">🗑</button>`:""}
       </div>
@@ -825,6 +829,7 @@ document.getElementById("app").addEventListener("click", async e=>{
     case "switch-tab":    await switchMarket(t.dataset.tab); break;
     case "add-campaign":  openCampaignForm(null); break;
     case "edit-campaign": openCampaignForm(cid); break;
+    case "info-campaign": openCampaignForm(cid); break;   // read-only when locked
     case "dup-campaign":  dupCampaign(cid); break;
     case "del-campaign":  delCampaign(cid); break;
     case "brief-campaign":{ const c=findCampaign(cid); if(c?.briefingUrl) window.open(c.briefingUrl,"_blank","noopener"); break; }
@@ -870,6 +875,8 @@ function delCampaign(cid){
    ===================================================== */
 function openCampaignForm(cid){
   const editing=!!cid;
+  const readOnly=!canEdit;                 // info view while locked; full editing once unlocked
+  const dis=readOnly?" disabled":"";
   const c=editing?findCampaign(cid):{name:"",start:state.range.from,end:state.range.from,mkFunds:true,status:"Planning",notes:"",owner:"",briefingUrl:"",brandColor:"",international:false,hasPromo:false,promoDetail:"",promoUrl:""};
   let sel=c.brandColor||"";
   const scrim=document.createElement("div"); scrim.className="scrim";
@@ -877,42 +884,46 @@ function openCampaignForm(cid){
     `<span class="swatch ${sel===""?"sel":""}" data-col="" style="background:#d1d5db" title="None"></span>`,
     ...BRAND_PALETTE.map(b=>`<span class="swatch ${sel===b.color?"sel":""}" data-col="${b.color}" style="background:${b.color}" title="${b.name}"></span>`)
   ].join("");
-  scrim.innerHTML=`<div class="modal"><h2>${editing?"Edit campaign":"New campaign"}</h2>
-    <div class="field"><label>Campaign name</label><input id="f_name" value="${esc(c.name)}" placeholder="e.g. RENFE SUMMER 2026"></div>
+  const title=readOnly?"Campaign info":(editing?"Edit campaign":"New campaign");
+  scrim.innerHTML=`<div class="modal"><h2>${title}</h2>
+    ${readOnly?`<p class="ro-hint">View only — click the 🔒 button in the top bar and enter the password to edit.</p>`:""}
+    <div class="field"><label>Campaign name</label><input id="f_name" value="${esc(c.name)}" placeholder="e.g. RENFE SUMMER 2026"${dis}></div>
     <div class="frow">
-      <div class="field"><label>Start date</label><input id="f_start" type="date" value="${c.start}"></div>
-      <div class="field"><label>End date</label><input id="f_end" type="date" value="${c.end}"></div>
+      <div class="field"><label>Start date</label><input id="f_start" type="date" value="${c.start}"${dis}></div>
+      <div class="field"><label>End date</label><input id="f_end" type="date" value="${c.end}"${dis}></div>
     </div>
     <div class="frow">
-      <div class="field"><label>MK Funds</label><select id="f_mk"><option value="yes" ${c.mkFunds?"selected":""}>Yes</option><option value="no" ${!c.mkFunds?"selected":""}>No</option></select></div>
-      <div class="field"><label>Status</label><select id="f_status">${STATUSES.map(s=>`<option ${s===c.status?"selected":""}>${s}</option>`).join("")}</select></div>
+      <div class="field"><label>MK Funds</label><select id="f_mk"${dis}><option value="yes" ${c.mkFunds?"selected":""}>Yes</option><option value="no" ${!c.mkFunds?"selected":""}>No</option></select></div>
+      <div class="field"><label>Status</label><select id="f_status"${dis}>${STATUSES.map(s=>`<option ${s===c.status?"selected":""}>${s}</option>`).join("")}</select></div>
     </div>
-    <div class="field"><label>Brand colour</label><div class="swatches">${sw}</div></div>
-    <div class="field"><label>Notes</label><textarea id="f_notes" rows="3" placeholder="Any notes about this campaign…">${esc(c.notes||"")}</textarea></div>
+    <div class="field"><label>Brand colour</label><div class="swatches${readOnly?" ro":""}">${sw}</div></div>
+    <div class="field"><label>Notes</label><textarea id="f_notes" rows="3" placeholder="Any notes about this campaign…"${dis}>${esc(c.notes||"")}</textarea></div>
     <div class="checks">
-      <div class="checkrow"><input type="checkbox" id="f_intl" ${c.international?"checked":""}><label for="f_intl">International (not domestic-only)</label></div>
-      <div class="checkrow"><input type="checkbox" id="f_promo" ${c.hasPromo?"checked":""}><label for="f_promo">Has promotion</label></div>
+      <div class="checkrow"><input type="checkbox" id="f_intl" ${c.international?"checked":""}${dis}><label for="f_intl">International (not domestic-only)</label></div>
+      <div class="checkrow"><input type="checkbox" id="f_promo" ${c.hasPromo?"checked":""}${dis}><label for="f_promo">Has promotion</label></div>
     </div>
     <div id="promoFields" style="${c.hasPromo?"":"display:none"}">
-      <div class="field"><label>Promo details</label><input id="f_promodetail" value="${esc(c.promoDetail||"")}" placeholder="e.g. 20% off all routes"></div>
-      <div class="field"><label>Promo URL</label><input id="f_promourl" value="${esc(c.promoUrl||"")}" placeholder="https://…"></div>
+      <div class="field"><label>Promo details</label><input id="f_promodetail" value="${esc(c.promoDetail||"")}" placeholder="e.g. 20% off all routes"${dis}></div>
+      <div class="field"><label>Promo URL</label><input id="f_promourl" value="${esc(c.promoUrl||"")}" placeholder="https://…"${dis}></div>
     </div>
     <div class="frow">
-      <div class="field"><label>Owner</label><input id="f_owner" value="${esc(c.owner||"")}" placeholder="Name"></div>
-      <div class="field"><label>Briefing URL</label><input id="f_url" value="${esc(c.briefingUrl||"")}" placeholder="https://…"></div>
+      <div class="field"><label>Owner</label><input id="f_owner" value="${esc(c.owner||"")}" placeholder="Name"${dis}></div>
+      <div class="field"><label>Briefing URL</label><input id="f_url" value="${esc(c.briefingUrl||"")}" placeholder="https://…"${dis}></div>
     </div>
     <div class="ferr" id="f_err"></div>
-    <div class="actions"><button class="btn" id="f_cancel">Cancel</button><button class="btn primary" id="f_save">${editing?"Save changes":"Create campaign"}</button></div>
+    <div class="actions"><button class="btn" id="f_cancel">${readOnly?"Close":"Cancel"}</button>${readOnly?"":`<button class="btn primary" id="f_save">${editing?"Save changes":"Create campaign"}</button>`}</div>
   </div>`;
   document.getElementById("overlays").appendChild(scrim);
+  const close=()=>scrim.remove();
+  scrim.addEventListener("click",e=>{ if(e.target===scrim) close(); });
+  scrim.querySelector("#f_cancel").addEventListener("click",close);
+  if(readOnly){ return; }                  // info view: nothing is editable, no save handler
+
   scrim.querySelectorAll(".swatch").forEach(sw=>sw.addEventListener("click",()=>{
     sel=sw.dataset.col; scrim.querySelectorAll(".swatch").forEach(s=>s.classList.toggle("sel",s.dataset.col===sel));
   }));
   const promoChk=scrim.querySelector("#f_promo"), promoFields=scrim.querySelector("#promoFields");
   promoChk.addEventListener("change",()=>{ promoFields.style.display=promoChk.checked?"":"none"; });
-  const close=()=>scrim.remove();
-  scrim.addEventListener("click",e=>{ if(e.target===scrim) close(); });
-  scrim.querySelector("#f_cancel").addEventListener("click",close);
   scrim.querySelector("#f_name").focus();
   scrim.querySelector("#f_save").addEventListener("click",()=>{
     const name=scrim.querySelector("#f_name").value.trim();
