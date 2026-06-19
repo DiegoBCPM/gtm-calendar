@@ -1,0 +1,250 @@
+/* =====================================================================
+   Trainline ES-IT GTM Calendar — STYLES
+   ---------------------------------------------------------------------
+   All visual styling lives here. No build step: the browser loads this
+   file directly (linked from index.html). Edit and refresh to see changes.
+
+   TABLE OF CONTENTS
+     1. Base + theme variables (:root colours, fonts)
+     2. Lock screen (.lc) — unused legacy gate, kept for reference
+     3. App shell (#app)
+     4. Top bar (.topbar, brand, market tabs, tools, save indicator)
+     5. Legend bar (.legendbar)
+     6. Scroll area + loading spinner
+     7. The Gantt grid (.grid, .row, .label, .lane)
+     8. Calendar header (months + day numbers)
+     9. Campaign rows  (.crow — name, pills, action buttons)
+    10. Category rows  (.catrow) and asset rows (.arow)
+    11. Painted bars   (.bar — the coloured activation blocks)
+    12. Right-click / tap menu on a bar (.menu)
+    13. The add/edit campaign pop-up (.modal, .field, .swatch)
+   ===================================================================== */
+
+/* ── 1. Base + theme variables ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:Inter,system-ui,-apple-system,sans-serif;font-size:13px;background:#f0f2f5;color:#111827;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+:root{
+  --leftw:316px;
+  --bg:#f0f2f5;--panel:#fff;--ink:#111827;--ink2:#6b7280;--muted:#9ca3af;
+  --line:#e5e7eb;--line2:#d1d5db;--today-c:#3b82f6;
+  --wkc:rgba(0,0,0,.032);--gridc:rgba(0,0,0,.07);
+  --SEO:#16a34a;--MerchSlots:#ea580c;--CRM:#7c3aed;--Growth:#dc2626;--Others:#475569;
+}
+
+/* ── 2. Lock screen ── */
+#lock{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(130% 130% at 30% 0%,#eff6ff,#e0e7ff 45%,#ddd6fe)}
+.lc{width:380px;max-width:92vw;background:#fff;border:1px solid var(--line2);border-radius:20px;
+  padding:36px 32px;box-shadow:0 32px 64px -32px rgba(60,40,120,.45)}
+.lc .kk{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.lc h1{font-size:26px;font-weight:700;margin:7px 0 4px}
+.lc p{color:var(--ink2);margin:0 0 22px;font-size:12.5px;line-height:1.5}
+.lc input{width:100%;padding:11px 13px;border:1px solid var(--line2);border-radius:10px;font-size:14px;outline:none;font-family:inherit}
+.lc input:focus{border-color:var(--today-c);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.lc .go{margin-top:11px;width:100%;padding:11px;border:none;border-radius:10px;background:#111827;color:#fff;font-weight:600;font-size:13.5px}
+.lc .go:hover{background:#1f2937}
+.lc .err{color:#dc2626;font-size:12px;min-height:16px;margin-top:8px}
+.lc .note{font-size:11px;color:var(--muted);margin-top:14px}
+
+/* ── 3. App shell ── */
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* ── 4. Top bar ── */
+.topbar{display:flex;align-items:center;gap:10px;padding:0 18px;height:56px;
+  background:#fff;border-bottom:1px solid var(--line);flex-shrink:0;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .ico{width:34px;height:34px;border-radius:9px;background:#2563eb;display:flex;align-items:center;
+  justify-content:center;color:#fff;font-size:15px;font-weight:800;flex-shrink:0}
+.brand .bl{display:flex;flex-direction:column;line-height:1.1}
+.brand .b1{font-size:14.5px;font-weight:700}
+.brand .b2{font-size:11px;color:var(--muted)}
+.divider{width:1px;height:28px;background:var(--line2);flex-shrink:0}
+
+/* Market tabs */
+.market-tabs{display:flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden;flex-shrink:0}
+.mtab{border:none;background:transparent;padding:7px 14px;font-size:13px;font-weight:500;color:var(--ink2);display:flex;align-items:center;gap:5px}
+.mtab:not(.active):hover{background:#f9fafb}
+.mtab.active{background:#111827;color:#fff}
+
+.tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line2);background:#fff;color:var(--ink);padding:7px 12px;
+  border-radius:9px;font-size:12.5px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:#f9fafb}
+.btn.primary{background:#111827;color:#fff;border-color:#111827}
+.btn.primary:hover{background:#1f2937}
+.seg{display:flex;align-items:center;border:1px solid var(--line2);border-radius:9px;overflow:hidden;background:#fff}
+.seg button{border:none;background:transparent;padding:7px 11px;font-size:14px;color:var(--ink2)}
+.seg button:hover{background:#f9fafb;color:var(--ink)}
+.seg .sp{width:1px;background:var(--line2);align-self:stretch}
+.rangebox{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);
+  padding:6px 10px;border:1px solid var(--line2);border-radius:9px;background:#fff}
+.rangebox input{border:none;font-size:12px;color:var(--ink);font-family:inherit;outline:none;width:96px}
+.spacer{flex:1}
+
+/* Save indicator (top-right "Synced" pill) */
+.save-ind{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink2);
+  padding:6px 10px;border:1px solid var(--line2);border-radius:9px;white-space:nowrap;flex-shrink:0}
+.save-ind .dot{width:8px;height:8px;border-radius:50%;background:#9ca3af;flex-shrink:0}
+.save-ind.synced .dot{background:#16a34a}
+.save-ind.syncing .dot{background:#d97706;animation:pulse .8s ease infinite}
+.save-ind.error{border-color:#fca5a5;background:#fef2f2;color:#dc2626;cursor:pointer}
+.save-ind.error .dot{background:#dc2626}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── 5. Legend bar ── */
+.legendbar{display:flex;align-items:center;gap:6px;padding:0 18px;height:40px;
+  background:#fff;border-bottom:1px solid var(--line);flex-shrink:0}
+.leg-label{font-size:10.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
+  border:1px solid var(--line2);font-size:12px;font-weight:500;cursor:pointer;user-select:none;background:#fff}
+.chip:hover{background:#f9fafb}
+.chip .cdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.chip.off{opacity:.32;text-decoration:line-through}
+.brand-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
+  font-size:12px;font-weight:500;background:#f9fafb;border:1px solid var(--line);color:var(--ink)}
+.brand-chip .bdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+/* ── 6. Scroll area + loading spinner ── */
+.scroll-wrap{flex:1;position:relative;overflow:hidden}
+.scroll{height:100%;overflow:auto;background:var(--bg)}
+.loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.85);
+  display:none;align-items:center;justify-content:center;z-index:50;
+  font-size:14px;font-weight:500;color:var(--ink2);gap:10px}
+.loading-overlay.show{display:flex}
+.spinner{width:18px;height:18px;border:2px solid var(--line2);border-top-color:var(--today-c);
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 7. The Gantt grid ── */
+.grid{display:flex;flex-direction:column;width:calc(var(--leftw) + var(--tlw));min-width:100%}
+.row{display:flex;width:calc(var(--leftw) + var(--tlw));border-bottom:1px solid var(--line)}
+.label{flex:0 0 var(--leftw);width:var(--leftw);position:sticky;left:0;z-index:6;
+  background:#fff;border-right:1px solid var(--line2)}
+.lane{flex:0 0 var(--tlw);width:var(--tlw);position:relative;
+  background-image:
+    linear-gradient(90deg,var(--tdyc,transparent) 0 2px,transparent 2px),
+    repeating-linear-gradient(90deg,var(--wkc) 0 calc(var(--dw)*2),transparent calc(var(--dw)*2) calc(var(--dw)*7)),
+    repeating-linear-gradient(90deg,var(--gridc) 0 1px,transparent 1px var(--dw));
+  background-repeat:no-repeat,repeat,repeat;
+  background-position:var(--tdyx,-50px) 0,var(--wkoff,0) 0,0 0}
+.lane.paintable{cursor:crosshair}
+.grid.locked .lane.paintable{cursor:default}
+
+/* ── 8. Calendar header ── */
+.hrow{position:sticky;top:0;z-index:9;border-bottom:1px solid var(--line2)}
+.hrow .label{z-index:11;background:#fff;display:flex;align-items:center;padding:0 14px}
+.corner-txt{font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.headlane{flex:0 0 var(--tlw);width:var(--tlw);background:#fff;display:flex;flex-direction:column;border-left:1px solid var(--line)}
+.months{display:flex;height:22px;border-bottom:1px solid var(--line)}
+.mb{flex:0 0 auto;display:flex;align-items:center;padding-left:10px;font-size:11.5px;font-weight:600;
+  color:var(--ink);border-right:1px solid var(--line2);text-transform:uppercase;letter-spacing:.05em;overflow:hidden;white-space:nowrap}
+.daysrow{display:flex;height:34px}
+.day{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-right:1px solid rgba(0,0,0,.06);line-height:1;gap:2px}
+.day.we .dnum,.day.we .dow{color:var(--muted)}
+.day .dow{font-size:8.5px;font-weight:500;color:var(--muted);text-transform:uppercase}
+.day .dnum{font-size:11px;font-weight:500;color:var(--ink2)}
+.day.today-col .dnum{background:var(--today-c);color:#fff;border-radius:50%;width:20px;height:20px;
+  display:flex;align-items:center;justify-content:center;font-weight:700}
+.day.today-col .dow{color:var(--today-c)}
+
+/* ── 9. Campaign rows ── */
+.crow{background:#fff;min-height:40px}
+.crow .label{background:#fff;border-left:4px solid var(--cc,#e5e7eb)}
+.clabel{display:flex;align-items:center;gap:7px;padding:8px 10px 8px 8px;min-height:40px}
+.caret{border:none;background:transparent;font-size:11px;color:var(--muted);padding:3px 4px;border-radius:5px;flex-shrink:0}
+.caret:hover{background:#f3f4f6;color:var(--ink)}
+.cmeta{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
+.cname{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctags{display:flex;gap:5px;align-items:center}
+.pill{font-size:9.5px;font-weight:600;padding:2px 7px;border-radius:999px;white-space:nowrap}
+.pill.mk.yes{background:#dcfce7;color:#15803d} .pill.mk.no{background:#f3f4f6;color:#6b7280}
+.pill.intl{background:#e0f2fe;color:#0369a1} .pill.promo{background:#fef3c7;color:#b45309} .pill.promo.link{cursor:pointer}
+.st-Planning{background:#f3f4f6;color:#6b7280} .st-Briefed{background:#eff6ff;color:#1d4ed8}
+.st-Live{background:#dcfce7;color:#15803d} .st-Done{background:#f3f4f6;color:#6b7280}
+.cacts{display:flex;gap:1px;flex-shrink:0}
+.cacts button{border:none;background:transparent;font-size:13px;color:var(--muted);padding:4px 5px;border-radius:6px;line-height:1}
+.cacts button:hover{background:#f3f4f6;color:var(--ink)}
+.cacts button:disabled{opacity:.25;cursor:default}
+.ic-at{vertical-align:middle;display:inline-block}            /* Airtable briefing icon */
+.field label .ic-at{margin-right:2px;position:relative;top:-1px}
+.cwin{position:absolute;top:50%;transform:translateY(-50%);height:22px;border-radius:8px;
+  background:transparent;border:2px dashed;pointer-events:none;z-index:0}
+.mini{position:absolute;height:4px;bottom:4px;border-radius:2px;opacity:.85;pointer-events:none;z-index:1}
+
+/* ── 10. Category rows + asset rows ── */
+.catrow{background:#fff;min-height:28px}
+.catrow .label{background:#fff}
+.catlabel{display:flex;align-items:center;gap:7px;padding:5px 10px 5px 16px;min-height:28px}
+.catlabel .cdot{width:9px;height:9px;border-radius:50%;background:var(--cc);flex-shrink:0}
+.catname{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--cc)}
+.catlane{min-height:28px}
+
+.arow{background:#fff;min-height:30px}
+.arow .label{background:#fff}
+.alabel-wrap{display:flex;align-items:center;gap:6px;padding:5px 10px 5px 30px;min-height:30px}
+.alabel-wrap .adot{width:7px;height:7px;border-radius:50%;background:var(--cc);flex-shrink:0;opacity:.7}
+.alabel-txt{font-size:12px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alane{min-height:30px}
+
+/* Category colour vars — each channel maps to its accent colour */
+.c-SEO{--cc:var(--SEO)} .c-MerchSlots{--cc:var(--MerchSlots)}
+.c-CRM{--cc:var(--CRM)} .c-Growth{--cc:var(--Growth)} .c-Others{--cc:var(--Others)}
+
+/* ── 11. Painted bars ── */
+.bar{position:absolute;top:5px;bottom:5px;border-radius:7px;background:var(--cc);
+  display:flex;align-items:center;overflow:hidden;user-select:none;z-index:2}
+.bar .blabel{flex:1;padding:0 10px;font-size:11px;font-weight:600;color:rgba(255,255,255,.92);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;min-width:0}
+.bar .h{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize;flex-shrink:0;z-index:3}
+.bar .h-l{left:0} .bar .h-r{right:0}
+.bar.preview{opacity:.55;cursor:crosshair;pointer-events:none}
+.bar.summary{opacity:.88;cursor:default}
+.bar.s-Planning{background:repeating-linear-gradient(45deg,var(--bar-bg,var(--cc)) 0 6px,rgba(255,255,255,.65) 6px 12px) !important}
+.bar.s-Briefed{box-shadow:inset 0 0 0 2px rgba(255,255,255,.65)}
+.bar.s-Done{opacity:.42}
+
+/* ── 12. Bar menu ── */
+.menu{position:fixed;z-index:700;background:#fff;border:1px solid var(--line2);
+  border-radius:12px;box-shadow:0 20px 48px -20px rgba(30,20,10,.45);padding:8px;min-width:190px}
+.menu .mhead{padding:5px 7px 9px;border-bottom:1px solid var(--line);margin-bottom:5px}
+.menu .mhead .mt{font-weight:600;font-size:13px}
+.menu .mhead .ms{font-size:11px;color:var(--ink2);margin-top:2px}
+.menu .seclab{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:4px 7px 3px}
+.menu .opt{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12.5px;cursor:pointer}
+.menu .opt:hover{background:#f9fafb}
+.menu .opt .msw{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.menu .opt.active{font-weight:600}
+.menu .del{color:#dc2626}
+
+/* ── 13. Add/edit campaign modal ── */
+.scrim{position:fixed;inset:0;z-index:600;background:rgba(17,24,39,.4);
+  display:flex;align-items:center;justify-content:center}
+.modal{width:460px;max-width:94vw;background:#fff;border:1px solid var(--line2);border-radius:18px;
+  box-shadow:0 32px 72px -32px rgba(30,20,60,.55);padding:24px 24px 18px}
+.modal h2{font-size:20px;font-weight:700;margin:0 0 18px}
+.modal .ro-hint{margin:-12px 0 16px;font-size:12px;color:var(--ink2);line-height:1.4}
+.field input:disabled,.field select:disabled,.field textarea:disabled{background:#f9fafb;color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1;cursor:default}
+.checkrow input:disabled{cursor:default} .checkrow input:disabled+label{cursor:default;opacity:.8}
+.swatches.ro{opacity:.75;pointer-events:none}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink2);margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;padding:9px 10px;border:1px solid var(--line2);border-radius:9px;
+  font-size:13px;font-family:inherit;outline:none;color:var(--ink);background:#fff}
+.field textarea{resize:vertical;line-height:1.45;min-height:60px}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.frow{display:flex;gap:12px} .frow .field{flex:1}
+.checks{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:13px}
+.checkrow{display:flex;align-items:center;gap:8px}
+.checkrow input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:#3b82f6;flex-shrink:0}
+.checkrow label{margin:0;text-transform:none;letter-spacing:0;font-size:12.5px;font-weight:500;color:var(--ink);cursor:pointer}
+.swatches{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:.15s;flex-shrink:0}
+.swatch:hover{transform:scale(1.12)}
+.swatch.sel{border-color:var(--ink);box-shadow:0 0 0 2px #fff inset}
+.modal .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.modal .ferr{color:#dc2626;font-size:12px;min-height:16px;margin-top:2px}
