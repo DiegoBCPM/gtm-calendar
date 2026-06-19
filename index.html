@@ -153,6 +153,8 @@ button{font-family:inherit;cursor:pointer}
 .cacts button{border:none;background:transparent;font-size:13px;color:var(--muted);padding:4px 5px;border-radius:6px;line-height:1}
 .cacts button:hover{background:#f3f4f6;color:var(--ink)}
 .cacts button:disabled{opacity:.25;cursor:default}
+.ic-at{vertical-align:middle;display:inline-block}
+.field label .ic-at{margin-right:2px;position:relative;top:-1px}
 .cwin{position:absolute;top:50%;transform:translateY(-50%);height:22px;border-radius:8px;
   background:transparent;border:2px dashed;pointer-events:none;z-index:0}
 .mini{position:absolute;height:4px;bottom:4px;border-radius:2px;opacity:.85;pointer-events:none;z-index:1}
@@ -201,7 +203,7 @@ button{font-family:inherit;cursor:pointer}
 .menu .opt:hover{background:#f9fafb}
 .menu .opt .msw{width:10px;height:10px;border-radius:3px;flex-shrink:0}
 .menu .opt.active{font-weight:600}
-.menu .del{color:#dc2626;margin-top:4px;padding-top:9px;border-top:1px solid var(--line)}
+.menu .del{color:#dc2626}
 
 /* ── Modal ── */
 .scrim{position:fixed;inset:0;z-index:600;background:rgba(17,24,39,.4);
@@ -355,18 +357,35 @@ const BRAND_PALETTE = [
    TAXONOMY
    ===================================================== */
 const TAXONOMY = [
-  {cat:"SEO",        assets:["TP - Home Page","TP - Landing Pages","TP - Other Pages","GTM Banner Home Page","Piggy Banner","Content Creation"]},
+  {cat:"SEO",        assets:["Top Banner - Home Page","Top Banner - Landing Pages","Top Banner - Other Pages","GTM Banner Home Page","Piggy Banner","Content Creation"]},
   {cat:"MerchSlots", assets:["App Banner","Homepage Banner","Search banners","GTM APP Carrusel"]},
   {cat:"CRM",        assets:["Dedicated Newsletter","Content Block","Push notification","IAM"]},
-  {cat:"Growth",     assets:["PPC","DAPS","APP"]},
+  {cat:"Growth",     assets:["PPC","Mobile Marketing"]},
   {cat:"Others",     assets:["Sponsored Search"]},
 ];
+// Legacy asset names → current names. Applied in migrate() so existing painted
+// bars aren't orphaned when the taxonomy is renamed.
+const ASSET_RENAME = {
+  "TP - Home Page":     "Top Banner - Home Page",
+  "TP - Landing Pages": "Top Banner - Landing Pages",
+  "TP - Other Pages":   "Top Banner - Other Pages",
+  "DAPS":               "Mobile Marketing",
+  "APP":                "Mobile Marketing",
+};
 const STATUSES = ["Planning","Briefed","Live","Done"];
 const MONTHS   = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
 const DOW      = ["S","M","T","W","T","F","S"];
 const MIN_DW=9, MAX_DW=48;
 const ASSET_CAMPAIGN = "__campaign__";
 const ASSET_CATEGORY = "__category__";
+
+/* Airtable logo — used as the briefing-link icon (briefings live in Airtable). */
+const ICON_AIRTABLE = `<svg class="ic-at" viewBox="0 0 200 170" width="15" height="13" aria-hidden="true">
+  <path fill="#FCB400" d="M90.04 12.37 24.08 39.66c-3.67 1.52-3.63 6.73.06 8.19l66.24 26.27c5.82 2.31 12.3 2.31 18.12 0l66.24-26.27c3.69-1.46 3.73-6.67.06-8.19L108.83 12.37c-6.02-2.49-12.78-2.49-18.79 0"/>
+  <path fill="#18BFFF" d="M105.31 88.46v65.62c0 3.12 3.15 5.25 6.05 4.1l73.81-28.65a4.43 4.43 0 0 0 2.79-4.11V59.81c0-3.12-3.15-5.25-6.05-4.1l-73.81 28.65a4.43 4.43 0 0 0-2.79 4.1"/>
+  <path fill="#F82B60" d="M88.08 91.85 66.17 102.42l-2.22 1.08-46.24 22.15c-2.93 1.42-6.67-.72-6.67-3.97V60.09c0-1.18.6-2.19 1.41-2.96.34-.34.72-.61 1.12-.85 1.1-.66 2.68-.83 4.02-.3l70.12 27.78c3.57 1.42 3.85 6.41.37 8.09"/>
+  <path fill="#000" fill-opacity=".25" d="M88.08 91.85 66.17 102.42 12.45 57.13c.34-.34.72-.61 1.12-.85 1.1-.66 2.68-.83 4.02-.3l70.12 27.78c3.57 1.42 3.85 6.41.37 8.09"/>
+</svg>`;
 
 /* =====================================================
    MULTI-MARKET STATE
@@ -387,7 +406,7 @@ function seedState(market){
     const mkSEO = a => ({id:uid(),category:"SEO",asset:a,start:"2026-02-27",end:"2026-03-04",status:"Live"});
     base.campaigns = [
       { id:uid(), name:"RENFE FALLAS 2026", mkFunds:true, start:"2026-02-26", end:"2026-03-19",
-        status:"Live", notes:"Feb 26 – Mar 19", owner:"", briefingUrl:"",
+        status:"Live", notes:"Feb 26 – Mar 19", owner:"", briefingUrl:"", assetsUrl:"",
         international:false, hasPromo:false, promoDetail:"", promoUrl:"",
         collapsed:false, brandColor:"#81015e",
         activations:[
@@ -395,7 +414,7 @@ function seedState(market){
           ...TAXONOMY[0].assets.map(mkSEO)
         ]},
       { id:uid(), name:"OUIGO ODV", mkFunds:true, start:"2026-03-05", end:"2026-03-08",
-        status:"Planning", notes:"Mar 5 – Mar 8", owner:"", briefingUrl:"",
+        status:"Planning", notes:"Mar 5 – Mar 8", owner:"", briefingUrl:"", assetsUrl:"",
         international:false, hasPromo:false, promoDetail:"", promoUrl:"",
         collapsed:false, brandColor:"#e3006a",
         activations:[
@@ -412,13 +431,16 @@ function migrate(s){
   s.collapsedCategories = s.collapsedCategories||{};
   s.hiddenCategories = s.hiddenCategories||{};
   s.campaigns = (s.campaigns||[]).map(c=>({
-    ...c, activations:c.activations||[],
+    ...c,
+    activations:(c.activations||[]).map(a=>({...a, asset:ASSET_RENAME[a.asset]||a.asset})),
     collapsed:c.collapsed??false, brandColor:c.brandColor||"",
     notes:(c.notes ?? c.flightDetail ?? ""),   // legacy flightDetail carries over into notes
     international:c.international??false,
     hasPromo:c.hasPromo??false,
     promoDetail:c.promoDetail||"",
-    promoUrl:c.promoUrl||""
+    promoUrl:c.promoUrl||"",
+    briefingUrl:c.briefingUrl||"",
+    assetsUrl:c.assetsUrl||""
   }));
   return s;
 }
@@ -591,7 +613,8 @@ function campaignHTML(c){
         ${canEdit?`<button title="Duplicate" data-action="dup-campaign" data-campaign="${cid}">⎘</button>`:""}
         ${canEdit?`<button title="Edit" data-action="edit-campaign" data-campaign="${cid}">✎</button>`:""}
         <button title="Campaign info" data-action="info-campaign" data-campaign="${cid}">ℹ️</button>
-        <button title="${c.briefingUrl?"Open briefing":"No briefing URL"}" data-action="brief-campaign" data-campaign="${cid}" ${c.briefingUrl?"":"disabled"}>🔗</button>
+        <button title="${c.briefingUrl?"Open briefing":"No briefing URL"}" data-action="brief-campaign" data-campaign="${cid}" ${c.briefingUrl?"":"disabled"}>${ICON_AIRTABLE}</button>
+        <button title="${c.assetsUrl?"Open assets":"No assets URL"}" data-action="assets-campaign" data-campaign="${cid}" ${c.assetsUrl?"":"disabled"}>📎</button>
         ${canEdit?`<button title="Delete" data-action="del-campaign" data-campaign="${cid}">🗑</button>`:""}
       </div>
     </div>
@@ -771,13 +794,9 @@ function openActMenu(act,barEl,e){
   const c=findCampaign(barEl.dataset.campaign);
   const isCamp=act.category==="campaign";
   const isCat =act.asset===ASSET_CATEGORY;
-  const sw=isCamp?(c?.brandColor||"#9ca3af"):`var(--${act.category})`;
   const title=isCamp?(c?.name||"Campaign span"):isCat?(act.category+" (category)"):act.asset;
   const m=document.createElement("div"); m.className="menu";
   m.innerHTML=`<div class="mhead"><div class="mt">${esc(title)}</div><div class="ms">${act.start} → ${act.end}</div></div>
-    <div class="seclab">Status</div>
-    ${STATUSES.map(s=>`<div class="opt ${s===act.status?"active":""}" data-status="${s}">
-      <span class="msw" style="background:${sw}"></span>${s}${s===act.status?" ✓":""}</div>`).join("")}
     <div class="opt del" data-del="1">🗑 Delete this bar</div>`;
   document.getElementById("overlays").appendChild(m);
   const mh=m.scrollHeight||230;
@@ -833,6 +852,7 @@ document.getElementById("app").addEventListener("click", async e=>{
     case "dup-campaign":  dupCampaign(cid); break;
     case "del-campaign":  delCampaign(cid); break;
     case "brief-campaign":{ const c=findCampaign(cid); if(c?.briefingUrl) window.open(c.briefingUrl,"_blank","noopener"); break; }
+    case "assets-campaign":{ const c=findCampaign(cid); if(c?.assetsUrl) window.open(c.assetsUrl,"_blank","noopener"); break; }
     case "promo-campaign":{ const c=findCampaign(cid); if(c?.promoUrl) window.open(c.promoUrl,"_blank","noopener"); break; }
     case "toggle-campaign":{ const c=findCampaign(cid); c.collapsed=!c.collapsed; render(); scheduleSave(); break; }
     case "toggle-category":{ const k=t.dataset.cat; state.collapsedCategories[k]=!state.collapsedCategories[k]; render(); scheduleSave(); break; }
@@ -877,7 +897,7 @@ function openCampaignForm(cid){
   const editing=!!cid;
   const readOnly=!canEdit;                 // info view while locked; full editing once unlocked
   const dis=readOnly?" disabled":"";
-  const c=editing?findCampaign(cid):{name:"",start:state.range.from,end:state.range.from,mkFunds:true,status:"Planning",notes:"",owner:"",briefingUrl:"",brandColor:"",international:false,hasPromo:false,promoDetail:"",promoUrl:""};
+  const c=editing?findCampaign(cid):{name:"",start:state.range.from,end:state.range.from,mkFunds:true,status:"Planning",notes:"",owner:"",briefingUrl:"",assetsUrl:"",brandColor:"",international:false,hasPromo:false,promoDetail:"",promoUrl:""};
   let sel=c.brandColor||"";
   const scrim=document.createElement("div"); scrim.className="scrim";
   const sw=[
@@ -906,9 +926,10 @@ function openCampaignForm(cid){
       <div class="field"><label>Promo details</label><input id="f_promodetail" value="${esc(c.promoDetail||"")}" placeholder="e.g. 20% off all routes"${dis}></div>
       <div class="field"><label>Promo URL</label><input id="f_promourl" value="${esc(c.promoUrl||"")}" placeholder="https://…"${dis}></div>
     </div>
+    <div class="field"><label>Owner</label><input id="f_owner" value="${esc(c.owner||"")}" placeholder="Name"${dis}></div>
     <div class="frow">
-      <div class="field"><label>Owner</label><input id="f_owner" value="${esc(c.owner||"")}" placeholder="Name"${dis}></div>
-      <div class="field"><label>Briefing URL</label><input id="f_url" value="${esc(c.briefingUrl||"")}" placeholder="https://…"${dis}></div>
+      <div class="field"><label>${ICON_AIRTABLE} Briefing URL</label><input id="f_url" value="${esc(c.briefingUrl||"")}" placeholder="Link to the campaign brief"${dis}></div>
+      <div class="field"><label>📎 Assets URL</label><input id="f_assets" value="${esc(c.assetsUrl||"")}" placeholder="Link to the creative assets"${dis}></div>
     </div>
     <div class="ferr" id="f_err"></div>
     <div class="actions"><button class="btn" id="f_cancel">${readOnly?"Close":"Cancel"}</button>${readOnly?"":`<button class="btn primary" id="f_save">${editing?"Save changes":"Create campaign"}</button>`}</div>
@@ -943,6 +964,7 @@ function openCampaignForm(cid){
       promoUrl:scrim.querySelector("#f_promourl").value.trim(),
       owner:scrim.querySelector("#f_owner").value.trim(),
       briefingUrl:scrim.querySelector("#f_url").value.trim(),
+      assetsUrl:scrim.querySelector("#f_assets").value.trim(),
       brandColor:sel};
     if(editing) Object.assign(c,data);
     else state.campaigns.push({id:uid(),collapsed:false,activations:[],...data});
