@@ -1,0 +1,25 @@
+name: GTM Slack notifier
+
+# Posts campaign start/finish alerts to Slack once a day.
+# See scripts/notify-slack.mjs for the logic.
+on:
+  schedule:
+    # 07:05 UTC = 09:05 CET / 08:05 BST — runs every morning.
+    # (GitHub cron is always UTC; the script computes "today" in Europe/Madrid.)
+    - cron: "5 7 * * *"
+  workflow_dispatch:        # lets you run it manually from the Actions tab to test
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Send Slack notifications
+        env:
+          SLACK_WEBHOOK_ES: ${{ secrets.SLACK_WEBHOOK_ES }}
+          SLACK_WEBHOOK_IT: ${{ secrets.SLACK_WEBHOOK_IT }}
+          LEAD_DAYS: "3"
+        run: node scripts/notify-slack.mjs
