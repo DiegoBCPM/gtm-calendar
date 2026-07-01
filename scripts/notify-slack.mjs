@@ -110,7 +110,7 @@ const CHANNEL_OWNERS = {
 
   // ─────────── SPAIN (ES) owners ───────────
   ES: {
-    SEO:        { label: "SEO",          slackId: "" },   // e.g. "U07ABC123"
+    SEO:        { label: "SEO",          slackId: "U08G2MN0JBY" },   // TEMP: Diego, for testing   // e.g. "U07ABC123"
     MerchSlots: { label: "MerchSlots",   slackId: "" },
     CRM:        { label: "CRM",          slackId: "" },
     GrowthPPC:  { label: "Growth · PPC", slackId: "" },
@@ -120,7 +120,7 @@ const CHANNEL_OWNERS = {
 
   // ─────────── ITALY (IT) owners ───────────
   IT: {
-    SEO:        { label: "SEO",          slackId: "" },
+    SEO:        { label: "SEO",          slackId: "U08G2MN0JBY" },   // TEMP: Diego, for testing
     MerchSlots: { label: "MerchSlots",   slackId: "" },
     CRM:        { label: "CRM",          slackId: "" },
     GrowthPPC:  { label: "Growth · PPC", slackId: "" },
