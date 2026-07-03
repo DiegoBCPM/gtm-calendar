@@ -4,7 +4,7 @@
    Runs once a day from GitHub Actions (.github/workflows/slack-notify.yml).
    Reads the same Supabase `gtm-state` rows the calendar uses and posts a
    Slack message when a campaign:
-     • briefing is due            (a "Briefing deadline" bar is dated today)
+     • briefing deadline          (a "Briefing Deadline" bar is dated today)
      • starts in LEAD_DAYS days   (start === today + LEAD_DAYS)
      • starts today               (start === today)
      • finished today             (end   === today)
@@ -81,7 +81,7 @@ const MESSAGES = {
     "📅 ran {start} → {end}   ·   final status: {status}\n" +
     "{links}",
 
-  // ── 4) Sent ON the date painted on the "Briefing deadline" row (before the campaign starts) ──
+  // ── 4) Sent ON the date painted on the "Briefing Deadline" row (before the campaign starts) ──
   briefing:
     "📋 *Briefing deadline* for *{name}* ({market}) — due *{briefDate}*.\n" +
     "{owners} — please make sure your channel's briefing is populated by then.\n" +
@@ -246,10 +246,11 @@ function buildText(kind, market, c, extra={}){
   return s.split("\n").map(l => l.trimEnd()).filter(l => l.trim().length).join("\n");
 }
 
-/* ---- is a "Briefing deadline" bar dated today on this campaign? ---- */
+/* ---- is a "Briefing Deadline" bar dated today on this campaign? ---- */
+// Only the "Briefing Deadline" asset triggers Slack; "Briefing Delivery" is visual-only for now.
 function briefingDueToday(c, today){
   for(const a of (c.activations || [])){
-    if(a && a.category === "Briefing" && a.start === today) return a;   // fire on the marked date
+    if(a && a.category === "Briefing" && a.asset === "Briefing Deadline" && a.start === today) return a;
   }
   return null;
 }

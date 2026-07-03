@@ -104,7 +104,7 @@ const BRAND_PALETTE = [
    4. TAXONOMY
    ===================================================== */
 const TAXONOMY = [
-  {cat:"Briefing", label:"Briefing deadline", assets:[]},   // key stays "Briefing" (class-safe); shown as "Briefing deadline". Paint the row to mark the due date.
+  {cat:"Briefing", assets:["Briefing Deadline","Briefing Delivery"]},   // black channel; painting "Briefing Deadline" fires the Slack reminder (Delivery is visual for now)
   {cat:"SEO",        assets:["Top Banner - Home Page","Top Banner - Landing Pages","Top Banner - Other Pages","GTM Banner Home Page","Piggy Banner","Content Creation"]},
   {cat:"MerchSlots", assets:["App Banner","Homepage Banner","Search banners","GTM APP Carrusel"]},
   {cat:"CRM",        assets:["Dedicated Newsletter","Content Block","Push notification","IAM"]},
