@@ -45,6 +45,8 @@ const LEAD_DAYS = Number(process.env.LEAD_DAYS || 3);
                    "@Ana from SEO, @Luis from Growth · PPC, @Sara from CRM"
                    (ONLY the channels painted on that campaign appear)
      {briefDate} → the briefing due date (only used in the briefing message)
+     {briefingLink} → the word "Briefing" hyperlinked to the campaign's briefing
+                   URL (the Airtable/briefing icon); plain "Briefing" if no URL set
      {links}     → "🔗 Briefing · 📎 Assets · 🎁 Promo" (only the ones set)
 
    A token that has no value (e.g. {links} when there are no links) just
@@ -77,16 +79,15 @@ const MESSAGES = {
 
   // ── 3) Sent ON the day a campaign FINISHES ──
   finish:
-    "🏁 *{name}* ({market}) wrapped up today — great work! Please make sure all channels are deactivated: {owners} 👏\n" +
+    "🏁 *{name}* ({market}) wrapped up today — great work! Please make sure all channels are deactivated, and share here the results: {owners} 👏\n" +
     "📅 ran {start} → {end}   ·   final status: {status}\n" +
     "{links}",
 
   // ── 4) Sent ON the date painted on the "Briefing Deadline" row (before the campaign starts) ──
   briefing:
-    "📋 *Briefing deadline* for *{name}* ({market}) — due *{briefDate}*.\n" +
-    "{owners} — please make sure your channel's briefing is populated by then.\n" +
-    "🗓 Campaign runs {start} → {end}\n" +
-    "{links}",
+    "📋 *Briefing Deadline* for *{name}* ({market}) — due *{briefDate}*.\n" +
+    "{owners} — please make sure your channel's {briefingLink} is populated by then.\n" +
+    "🗓 Campaign runs {start} → {end}",
 };
 
 // Title line shown once above the day's updates per market. "" to hide it.
@@ -119,21 +120,21 @@ const CHANNEL_OWNERS = {
 
   // ─────────── SPAIN (ES) owners ───────────
   ES: {
-    SEO:        { label: "SEO",          slackId: "U08G2MN0JBY" },   // TEMP: Diego, for testing   // e.g. "U07ABC123"
-    MerchSlots: { label: "MerchSlots",   slackId: "" },
-    CRM:        { label: "CRM",          slackId: "" },
-    GrowthPPC:  { label: "Growth · PPC", slackId: "" },
+    SEO:        { label: "SEO",          slackId: "U08GLP9BL57" },   // TEMP: Diego, for testing   // e.g. "U07ABC123"
+    MerchSlots: { label: "MerchSlots",   slackId: "U08GLP9BL57" },
+    CRM:        { label: "CRM",          slackId: "U0A8F2NQDHS" },
+    GrowthPPC:  { label: "Growth · PPC", slackId: "U08GLPE2GN5" },
     GrowthMM:   { label: "Growth · MM",  slackId: "" },
-    Others:     { label: "Others",       slackId: "" },
+    Others:     { label: "Others",       slackId: "U08FUUKE1KR" },
   },
 
   // ─────────── ITALY (IT) owners ───────────
   IT: {
-    SEO:        { label: "SEO",          slackId: "U08G2MN0JBY" },   // TEMP: Diego, for testing
-    MerchSlots: { label: "MerchSlots",   slackId: "" },
-    CRM:        { label: "CRM",          slackId: "" },
-    GrowthPPC:  { label: "Growth · PPC", slackId: "" },
-    GrowthMM:   { label: "Growth · MM",  slackId: "" },
+    SEO:        { label: "SEO",          slackId: "U08GLP80R41" },   // TEMP: Diego, for testing
+    MerchSlots: { label: "MerchSlots",   slackId: "U08GLP80R41" },
+    CRM:        { label: "CRM",          slackId: "U08FUTEJMFZ" },
+    GrowthPPC:  { label: "Growth · PPC", slackId: "U08GLPE2GN5" },
+    GrowthMM:   { label: "Growth · MM",  slackId: "U08GALP0KMG" },
     Others:     { label: "Others",       slackId: "" },
   },
 };
@@ -239,6 +240,7 @@ function buildText(kind, market, c, extra={}){
     owners: ownersToken(c, market),
     links: linksToken(c),
     briefDate: "",
+    briefingLink: c.briefingUrl ? `<${c.briefingUrl}|Briefing>` : "Briefing",   // the word "Briefing", linked
     ...extra,
   };
   let s = MESSAGES[kind];
