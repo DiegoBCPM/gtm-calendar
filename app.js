@@ -104,7 +104,7 @@ const BRAND_PALETTE = [
    4. TAXONOMY
    ===================================================== */
 const TAXONOMY = [
-  {cat:"Briefing",   assets:[]},   // no sub-assets: paint the channel row itself to mark the briefing-due date
+  {cat:"Briefing", label:"Briefing deadline", assets:[]},   // key stays "Briefing" (class-safe); shown as "Briefing deadline". Paint the row to mark the due date.
   {cat:"SEO",        assets:["Top Banner - Home Page","Top Banner - Landing Pages","Top Banner - Other Pages","GTM Banner Home Page","Piggy Banner","Content Creation"]},
   {cat:"MerchSlots", assets:["App Banner","Homepage Banner","Search banners","GTM APP Carrusel"]},
   {cat:"CRM",        assets:["Dedicated Newsletter","Content Block","Push notification","IAM"]},
@@ -401,7 +401,7 @@ function categoryHTML(c,t){
   let html=`<div class="row catrow c-${t.cat}">
     <div class="label catlabel">
       <button class="caret" data-action="toggle-category" data-cat="${t.cat}">${col?"▸":"▾"}</button>
-      <span class="cdot"></span><span class="catname">${t.cat}</span>
+      <span class="cdot"></span><span class="catname">${esc(t.label||t.cat)}</span>
     </div>
     <div class="lane catlane paintable" data-paint="1" data-campaign="${c.id}" data-cat="${t.cat}" data-asset="${ASSET_CATEGORY}">
       ${catBars}${sumBars}
@@ -459,7 +459,7 @@ function effStatus(c){
 
 function renderLegend(){
   const chips=TAXONOMY.map(t=>`<span class="chip ${state.hiddenCategories[t.cat]?"off":""}" data-action="toggle-legend" data-cat="${t.cat}">
-    <span class="cdot" style="background:var(--${t.cat})"></span>${t.cat}</span>`).join("");
+    <span class="cdot" style="background:var(--${t.cat})"></span>${esc(t.label||t.cat)}</span>`).join("");
   const brands=BRAND_PALETTE.map(b=>`<span class="brand-chip"><span class="bdot" style="background:${b.color}"></span>${b.name}</span>`).join("");
   document.getElementById("legend").innerHTML=
     `<span class="leg-label">Channels</span><div style="display:flex;gap:5px">${chips}</div>

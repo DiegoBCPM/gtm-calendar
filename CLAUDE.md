@@ -54,7 +54,7 @@ Statuses: Planning (hatched/light), Briefed (outlined), Live (solid), Done (fade
 Campaign status **auto-advances by date** via `effStatus()`: it shows **Live** once the start date is reached and **Done** once the end date has passed; before the start date the manually-set status (Planning/Briefed) is kept. The value is derived at render time (and persisted when unlocked); the Slack notifier applies the same rule so both agree.
 
 ## Fixed channel taxonomy (identical for every campaign, both markets)
-- **Briefing** (black): no sub-assets — paint the channel row itself to mark the date the briefing must be populated (normally *before* the campaign start). Intended to drive a dedicated Slack reminder to the activated channels' owners.
+- **Briefing deadline** (black): internal key is `Briefing` (class-safe, no space); displayed as "Briefing deadline" via the taxonomy entry's `label`. No sub-assets — paint the channel row itself to mark the date the briefing must be populated (normally *before* the campaign start). Fires a dedicated Slack reminder **on the marked date** to the activated channels' owners.
 - **SEO** (green): Top Banner - Home Page, Top Banner - Landing Pages, Top Banner - Other Pages, GTM Banner Home Page, Piggy Banner, Content Creation
 - **MerchSlots** (orange): App Banner, Homepage Banner, Search banners, GTM APP Carrusel
 - **CRM** (purple): Dedicated Newsletter, Content Block, Push notification, IAM
