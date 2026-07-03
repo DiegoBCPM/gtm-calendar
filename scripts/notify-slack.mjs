@@ -4,6 +4,7 @@
    Runs once a day from GitHub Actions (.github/workflows/slack-notify.yml).
    Reads the same Supabase `gtm-state` rows the calendar uses and posts a
    Slack message when a campaign:
+     • briefing is due            (a "Briefing deadline" bar is dated today)
      • starts in LEAD_DAYS days   (start === today + LEAD_DAYS)
      • starts today               (start === today)
      • finished today             (end   === today)
@@ -19,7 +20,7 @@
 
    =====================================================================
    ███  YOU EDIT ONLY THE 3 CONFIG BLOCKS BELOW. Nothing else.  ███
-     CONFIG 1  — the wording of the 3 messages
+     CONFIG 1  — the wording of the 4 messages
      CONFIG 2  — the Slack ID of each channel owner
      CONFIG 3  — how the list of owners is formatted (optional)
    ===================================================================== */
@@ -30,7 +31,7 @@ const LEAD_DAYS = Number(process.env.LEAD_DAYS || 3);
 /* ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
    CONFIG 1 — MESSAGE WORDING
    ───────────────────────────────────────────────────────────────────
-   There are three messages. Just edit the text inside the quotes.
+   There are four messages (soon / start / finish / briefing). Just edit the text inside the quotes.
    Each "\n" starts a new line. Slack *bold* uses *single asterisks*.
 
    You can drop these {tokens} anywhere in the text and they get replaced:
@@ -39,10 +40,11 @@ const LEAD_DAYS = Number(process.env.LEAD_DAYS || 3);
      {leadDays}  → the number of days before start (currently 3)
      {start}     → start date, e.g. 2026-07-13
      {end}       → end date
-     {status}    → Planning / Briefed / Live / Done
+     {status}    → Planning / Briefed / Live / Done (auto: Live on start, Done after end)
      {owners}    → the activated channels' owners, auto-built. e.g.
                    "@Ana from SEO, @Luis from Growth · PPC, @Sara from CRM"
                    (ONLY the channels painted on that campaign appear)
+     {briefDate} → the briefing due date (only used in the briefing message)
      {links}     → "🔗 Briefing · 📎 Assets · 🎁 Promo" (only the ones set)
 
    A token that has no value (e.g. {links} when there are no links) just
@@ -69,14 +71,21 @@ const MESSAGES = {
   // ── 2) Sent ON the day a campaign STARTS ──
   start:
     "🚀 *{name}* ({market}) is live as of today!\n" +
-    "Owners on deck: {owners}\n" +
+    "Please activate channels: {owners}\n" +
     "📅 {start} → {end}   ·   📍 {status}\n" +
     "{links}",
 
   // ── 3) Sent ON the day a campaign FINISHES ──
   finish:
-    "🏁 *{name}* ({market}) wrapped up today — great work {owners} 👏\n" +
+    "🏁 *{name}* ({market}) wrapped up today — great work! Please make sure all channels are deactivated: {owners} 👏\n" +
     "📅 ran {start} → {end}   ·   final status: {status}\n" +
+    "{links}",
+
+  // ── 4) Sent ON the date painted on the "Briefing deadline" row (before the campaign starts) ──
+  briefing:
+    "📋 *Briefing deadline* for *{name}* ({market}) — due *{briefDate}*.\n" +
+    "{owners} — please make sure your channel's briefing is populated by then.\n" +
+    "🗓 Campaign runs {start} → {end}\n" +
     "{links}",
 };
 
@@ -213,18 +222,36 @@ function linksToken(c){
   return out.join("   ·   ");
 }
 
+/* ---- campaign status auto-advances by date (mirrors effStatus in app.js) ---- */
+function effStatus(c){
+  const t = todayStr();
+  if(c.end   && t > c.end)    return "Done";
+  if(c.start && t >= c.start) return "Live";
+  return c.status || "Planning";
+}
+
 /* ---- render one message: fill tokens, drop blank lines ---- */
-function buildText(kind, market, c){
+function buildText(kind, market, c, extra={}){
   const tokens = {
     name: c.name || "Untitled campaign",
-    market, start: c.start, end: c.end, status: c.status || "—",
+    market, start: c.start, end: c.end, status: effStatus(c),
     leadDays: String(LEAD_DAYS),
     owners: ownersToken(c, market),
     links: linksToken(c),
+    briefDate: "",
+    ...extra,
   };
   let s = MESSAGES[kind];
   for(const [k,v] of Object.entries(tokens)) s = s.replaceAll(`{${k}}`, v ?? "");
   return s.split("\n").map(l => l.trimEnd()).filter(l => l.trim().length).join("\n");
+}
+
+/* ---- is a "Briefing deadline" bar dated today on this campaign? ---- */
+function briefingDueToday(c, today){
+  for(const a of (c.activations || [])){
+    if(a && a.category === "Briefing" && a.start === today) return a;   // fire on the marked date
+  }
+  return null;
 }
 
 /* ---- Supabase read (mirrors dbLoad in app.js) ---- */
@@ -267,6 +294,8 @@ async function run(){
     const blocks = [];
     for(const c of campaigns){
       if(!c || !c.start) continue;
+      const brief = briefingDueToday(c, today);
+      if(brief)               blocks.push(section(buildText("briefing", market, c, { briefDate: brief.end })));
       if(c.start === soonDay) blocks.push(section(buildText("soon",   market, c)));
       if(c.start === today)   blocks.push(section(buildText("start",  market, c)));
       if(c.end   === today)   blocks.push(section(buildText("finish", market, c)));
