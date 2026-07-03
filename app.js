@@ -104,6 +104,7 @@ const BRAND_PALETTE = [
    4. TAXONOMY
    ===================================================== */
 const TAXONOMY = [
+  {cat:"Briefing",   assets:[]},   // no sub-assets: paint the channel row itself to mark the briefing-due date
   {cat:"SEO",        assets:["Top Banner - Home Page","Top Banner - Landing Pages","Top Banner - Other Pages","GTM Banner Home Page","Piggy Banner","Content Creation"]},
   {cat:"MerchSlots", assets:["App Banner","Homepage Banner","Search banners","GTM APP Carrusel"]},
   {cat:"CRM",        assets:["Dedicated Newsletter","Content Block","Push notification","IAM"]},
@@ -158,7 +159,7 @@ function seedState(market){
         collapsed:false, brandColor:"#81015e",
         activations:[
           {id:uid(),category:"campaign",asset:ASSET_CAMPAIGN,start:"2026-02-26",end:"2026-03-19",status:"Live"},
-          ...TAXONOMY[0].assets.map(mkSEO)
+          ...TAXONOMY.find(t=>t.cat==="SEO").assets.map(mkSEO)
         ]},
       { id:uid(), name:"OUIGO ODV", mkFunds:true, start:"2026-03-05", end:"2026-03-08",
         status:"Planning", notes:"Mar 5 – Mar 8", owner:"", briefingUrl:"", assetsUrl:"",
@@ -297,6 +298,10 @@ const scroll= document.getElementById("scroll");
 function render(){
   // Auto-organise: earliest start date at the top
   state.campaigns.sort((a,b)=>(a.start||"").localeCompare(b.start||"")||(a.name||"").localeCompare(b.name||""));
+  // Auto-advance status by date (Live on start, Done after end); persist if it changed.
+  let statusDirty=false;
+  for(const c of state.campaigns){ const e=effStatus(c); if(e!==c.status){ c.status=e; statusDirty=true; } }
+  if(statusDirty) scheduleSave();
   document.getElementById("fromDate").value = state.range.from;
   document.getElementById("toDate").value   = state.range.to;
 
@@ -362,7 +367,6 @@ function campaignHTML(c){
         <button title="Campaign info" data-action="info-campaign" data-campaign="${cid}">ℹ️</button>
         <button title="${c.briefingUrl?"Open briefing":"No briefing URL"}" data-action="brief-campaign" data-campaign="${cid}" ${c.briefingUrl?"":"disabled"}>${ICON_AIRTABLE}</button>
         <button title="${c.assetsUrl?"Open assets":"No assets URL"}" data-action="assets-campaign" data-campaign="${cid}" ${c.assetsUrl?"":"disabled"}>📎</button>
-        ${canEdit?`<button title="Delete" data-action="del-campaign" data-campaign="${cid}">🗑</button>`:""}
       </div>
     </div>
     <div class="lane clane paintable" data-paint="1" data-campaign="${cid}" data-cat="campaign" data-asset="${ASSET_CAMPAIGN}">
@@ -442,6 +446,16 @@ function barHTML(cid,a,campaignColor){
 }
 
 function stCls(s){ return {Planning:"st-Planning",Briefed:"st-Briefed",Live:"st-Live",Done:"st-Done"}[s]||"st-Planning"; }
+
+/* Status auto-advances by date: Live once the start date is reached, Done once
+   the end date has passed. Before the start date the manual status (Planning /
+   Briefed) is kept. The Slack notifier applies the same rule so both agree. */
+function effStatus(c){
+  const t=todayStr();
+  if(c.end   && t>c.end)    return "Done";
+  if(c.start && t>=c.start) return "Live";
+  return c.status||"Planning";
+}
 
 function renderLegend(){
   const chips=TAXONOMY.map(t=>`<span class="chip ${state.hiddenCategories[t.cat]?"off":""}" data-action="toggle-legend" data-cat="${t.cat}">
@@ -679,13 +693,19 @@ function openCampaignForm(cid){
       <div class="field"><label>📎 Assets URL</label><input id="f_assets" value="${esc(c.assetsUrl||"")}" placeholder="Link to the creative assets"${dis}></div>
     </div>
     <div class="ferr" id="f_err"></div>
-    <div class="actions"><button class="btn" id="f_cancel">${readOnly?"Close":"Cancel"}</button>${readOnly?"":`<button class="btn primary" id="f_save">${editing?"Save changes":"Create campaign"}</button>`}</div>
+    <div class="actions">
+      ${editing&&!readOnly?`<button class="btn danger" id="f_delete">🗑 Delete campaign</button>`:""}
+      <div class="spacer" style="flex:1"></div>
+      <button class="btn" id="f_cancel">${readOnly?"Close":"Cancel"}</button>${readOnly?"":`<button class="btn primary" id="f_save">${editing?"Save changes":"Create campaign"}</button>`}
+    </div>
   </div>`;
   document.getElementById("overlays").appendChild(scrim);
   const close=()=>scrim.remove();
   scrim.addEventListener("click",e=>{ if(e.target===scrim) close(); });
   scrim.querySelector("#f_cancel").addEventListener("click",close);
   if(readOnly){ return; }                  // info view: nothing is editable, no save handler
+  const delBtn=scrim.querySelector("#f_delete");
+  if(delBtn) delBtn.addEventListener("click",()=>{ close(); delCampaign(cid); });   // delCampaign confirms first
 
   scrim.querySelectorAll(".swatch").forEach(sw=>sw.addEventListener("click",()=>{
     sel=sw.dataset.col; scrim.querySelectorAll(".swatch").forEach(s=>s.classList.toggle("sel",s.dataset.col===sel));

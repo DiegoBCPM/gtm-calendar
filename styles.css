@@ -31,7 +31,7 @@ button{font-family:inherit;cursor:pointer}
   --bg:#f0f2f5;--panel:#fff;--ink:#111827;--ink2:#6b7280;--muted:#9ca3af;
   --line:#e5e7eb;--line2:#d1d5db;--today-c:#3b82f6;
   --wkc:rgba(0,0,0,.032);--gridc:rgba(0,0,0,.07);
-  --SEO:#16a34a;--MerchSlots:#ea580c;--CRM:#7c3aed;--Growth:#dc2626;--Others:#475569;
+  --Briefing:#000000;--SEO:#16a34a;--MerchSlots:#ea580c;--CRM:#7c3aed;--Growth:#dc2626;--Others:#475569;
 }
 
 /* ── 2. Lock screen ── */
@@ -75,6 +75,8 @@ button{font-family:inherit;cursor:pointer}
 .btn:hover{background:#f9fafb}
 .btn.primary{background:#111827;color:#fff;border-color:#111827}
 .btn.primary:hover{background:#1f2937}
+.btn.danger{background:#fff;color:#dc2626;border-color:#f1b0b0}
+.btn.danger:hover{background:#fef2f2;border-color:#dc2626}
 .seg{display:flex;align-items:center;border:1px solid var(--line2);border-radius:9px;overflow:hidden;background:#fff}
 .seg button{border:none;background:transparent;padding:7px 11px;font-size:14px;color:var(--ink2)}
 .seg button:hover{background:#f9fafb;color:var(--ink)}
@@ -191,6 +193,7 @@ button{font-family:inherit;cursor:pointer}
 .alane{min-height:30px}
 
 /* Category colour vars — each channel maps to its accent colour */
+.c-Briefing{--cc:var(--Briefing)}
 .c-SEO{--cc:var(--SEO)} .c-MerchSlots{--cc:var(--MerchSlots)}
 .c-CRM{--cc:var(--CRM)} .c-Growth{--cc:var(--Growth)} .c-Others{--cc:var(--Others)}
 
