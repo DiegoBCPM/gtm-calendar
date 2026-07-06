@@ -127,7 +127,7 @@ const CHANNEL_OWNERS = {
     CRM:        { label: "CRM",          slackId: "U0A8F2NQDHS" },
     GrowthPPC:  { label: "Growth · PPC", slackId: "U08GLPE2GN5" },
     GrowthMM:   { label: "Growth · MM",  slackId: "U098H1XU5QU" },
-    Others:     { label: "Others",       slackId: "U08FUUKE1KR" },
+    Others:     { label: "Others",       slackId: "U08FUUKE1KR, U08G2MTCC3Y" },
   },
 
   // ─────────── ITALY (IT) owners ───────────
@@ -137,7 +137,7 @@ const CHANNEL_OWNERS = {
     CRM:        { label: "CRM",          slackId: "U08FUTEJMFZ" },
     GrowthPPC:  { label: "Growth · PPC", slackId: "U08GLPE2GN5" },
     GrowthMM:   { label: "Growth · MM",  slackId: "U08GALP0KMG" },
-    Others:     { label: "Others",       slackId: "" },
+    Others:     { label: "Others",       slackId: "U08G2MTCC3Y" },
   },
 };
 
