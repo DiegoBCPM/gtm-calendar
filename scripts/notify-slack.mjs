@@ -101,7 +101,9 @@ const HEADER = "📣 {market} GTM — {today}";
    and the IT block for Italy campaigns. The job automatically uses the
    right market's owners, so the wrong country never gets pinged.
 
-   There is ONE owner per bucket. Put their Slack member ID in `slackId`.
+   Put the owner's Slack member ID in `slackId`. Need several people on one
+   channel? Separate the IDs with commas — e.g. "U07ABC123, U07XYZ456" — and
+   everyone listed gets @-mentioned.
    To find an ID in Slack: click the person's name/avatar → "View full
    profile" → the "⋯" (More) button → "Copy member ID" (looks like
    U07ABC123). Paste it between the quotes. Leave "" to skip mentioning.
@@ -124,7 +126,7 @@ const CHANNEL_OWNERS = {
     MerchSlots: { label: "MerchSlots",   slackId: "U08GLP9BL57" },
     CRM:        { label: "CRM",          slackId: "U0A8F2NQDHS" },
     GrowthPPC:  { label: "Growth · PPC", slackId: "U08GLPE2GN5" },
-    GrowthMM:   { label: "Growth · MM",  slackId: "" },
+    GrowthMM:   { label: "Growth · MM",  slackId: "U098H1XU5QU" },
     Others:     { label: "Others",       slackId: "U08FUUKE1KR" },
   },
 
@@ -208,8 +210,10 @@ function ownersToken(c, market){
   if(!buckets.length) return NO_OWNERS;
   return buckets.map(b => {
     const o = owners[b];
-    if(!o || (!o.slackId && !o.label)) return null;
-    const mention = o.slackId ? `<@${o.slackId}>` : `(${o.label} owner)`;
+    if(!o) return null;
+    // slackId may hold several IDs separated by commas/spaces → @-mention each person.
+    const ids = String(o.slackId || "").split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+    const mention = ids.length ? ids.map(id => `<@${id}>`).join(" ") : `(${o.label} owner)`;
     return OWNER_FORMAT.replaceAll("{mention}", mention).replaceAll("{label}", o.label);
   }).filter(Boolean).join(OWNER_JOIN);
 }
