@@ -122,22 +122,22 @@ const CHANNEL_OWNERS = {
 
   // ─────────── SPAIN (ES) owners ───────────
   ES: {
-    SEO:        { label: "SEO",          slackId: "U08GLP9BL57" },   // TEMP: Diego, for testing   // e.g. "U07ABC123"
+    SEO:        { label: "SEO",          slackId: "U08GLP9BL57" },
     MerchSlots: { label: "MerchSlots",   slackId: "U08GLP9BL57" },
     CRM:        { label: "CRM",          slackId: "U0A8F2NQDHS" },
     GrowthPPC:  { label: "Growth · PPC", slackId: "U08GLPE2GN5" },
     GrowthMM:   { label: "Growth · MM",  slackId: "U098H1XU5QU" },
-    Others:     { label: "Others",       slackId: "U08FUUKE1KR, U08G2MTCC3Y" },
+    Others:     { label: "Others",       slackId: "U08FUUKE1KR, U08G2MTCC3Y, U08G2MN0JBY" },
   },
 
   // ─────────── ITALY (IT) owners ───────────
   IT: {
-    SEO:        { label: "SEO",          slackId: "U08GLP80R41" },   // TEMP: Diego, for testing
+    SEO:        { label: "SEO",          slackId: "U08GLP80R41" },
     MerchSlots: { label: "MerchSlots",   slackId: "U08GLP80R41" },
     CRM:        { label: "CRM",          slackId: "U08FUTEJMFZ" },
     GrowthPPC:  { label: "Growth · PPC", slackId: "U08GLPE2GN5" },
     GrowthMM:   { label: "Growth · MM",  slackId: "U08GALP0KMG" },
-    Others:     { label: "Others",       slackId: "U08G2MTCC3Y" },
+    Others:     { label: "Others",       slackId: "U08G2MTCC3Y, U08G2MN0JBY" },
   },
 };
 
