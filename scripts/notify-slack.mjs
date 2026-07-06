@@ -127,7 +127,7 @@ const CHANNEL_OWNERS = {
     CRM:        { label: "CRM",          slackId: "U0A8F2NQDHS" },
     GrowthPPC:  { label: "Growth · PPC", slackId: "U08GLPE2GN5" },
     GrowthMM:   { label: "Growth · MM",  slackId: "U098H1XU5QU" },
-    Others:     { label: "Others",       slackId: "U08FUUKE1KR, U08G2MTCC3Y, U08G2MN0JBY" },
+    Others:     { label: "Others",       slackId: "" },
   },
 
   // ─────────── ITALY (IT) owners ───────────
@@ -137,8 +137,21 @@ const CHANNEL_OWNERS = {
     CRM:        { label: "CRM",          slackId: "U08FUTEJMFZ" },
     GrowthPPC:  { label: "Growth · PPC", slackId: "U08GLPE2GN5" },
     GrowthMM:   { label: "Growth · MM",  slackId: "U08GALP0KMG" },
-    Others:     { label: "Others",       slackId: "U08G2MTCC3Y, U08G2MN0JBY" },
+    Others:     { label: "Others",       slackId: "" },
   },
+};
+
+
+/* ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+   CONFIG 2b — CC  →  people tagged on EVERY message (always aware)
+   ───────────────────────────────────────────────────────────────────
+   These Slack IDs get @-mentioned on every daily post for the market,
+   no matter which channels are painted — a "🔔 cc:" line at the bottom.
+   Per market (ES / IT can differ). Comma-separate several IDs; "" = none.
+   ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ */
+const CC = {
+  ES: "U08FUUKE1KR, U08G2MTCC3Y, U08G2MN0JBY",
+  IT: "U08G2MTCC3Y, U08G2MN0JBY",
 };
 
 
@@ -312,8 +325,11 @@ async function run(){
 
     const head = HEADER ? [{ type:"header", text:{ type:"plain_text",
       text: HEADER.replaceAll("{market}",market).replaceAll("{today}",today), emoji:true } }] : [];
+    // CC: people who should be aware of every campaign for this market.
+    const ccIds = String(CC[market] || "").split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+    const ccBlock = ccIds.length ? [section(`🔔 cc: ${ccIds.map(id => `<@${id}>`).join(" ")}`)] : [];
     try {
-      await postSlack(webhook, [...head, ...blocks], `${market} GTM updates for ${today}`);
+      await postSlack(webhook, [...head, ...blocks, ...ccBlock], `${market} GTM updates for ${today}`);
       totalSent += blocks.length;
       console.log(`[${market}] posted ${blocks.length} update(s)`);
     } catch(err){ console.error(`[${market}] ${err.message}`); process.exitCode = 1; }
