@@ -4,7 +4,7 @@
 A single-page web app for planning Trainline's GTM marketing campaigns across **Spain (ES)** and **Italy (IT)**. It's a painted Gantt/calendar: campaigns listed on the left, a day-by-day timeline on the right. Users click-drag across days on any row to "paint" coloured bars (activations), grouped by marketing channel. Two market tabs (ES / IT), each with fully independent data.
 
 ## Tech stack
-- **Frontend:** one self-contained `index.html` — inline CSS + vanilla JS. No framework, no build step, no dependencies.
+- **Frontend:** three plain files — `index.html` (page shell) + `styles.css` + `app.js` (all behaviour). Vanilla JS, no framework, no build step, no dependencies.
 - **Database:** Supabase (Postgres) — stores shared state so the whole team sees the same calendar.
 - **Hosting:** Netlify (static site) — live at https://singular-mochi-83fc9c.netlify.app
 
@@ -67,7 +67,7 @@ Legacy asset names auto-migrate via `ASSET_RENAME` in `migrate()` (old `TP - …
 Trainline `#02a88f` · Renfe `#81015e` · Ouigo `#e3006a` · iryo `#d30e17` · Trenitalia `#006c67` · Italo `#a7160c` · Monetization `#383838` · Product `#1f03ff`
 
 ## Conventions
-- Keep everything in the single `index.html`. No build tooling.
+- Keep to the three files (`index.html` / `styles.css` / `app.js`). No build tooling, no dependencies.
 - No `localStorage` / `sessionStorage`.
 - The "Synced" indicator (top-right) reflects the real save status; on failure it shows the HTTP status + message.
 
@@ -76,7 +76,11 @@ Target: a git repo connected to Netlify so `git push` auto-deploys (currently th
 
 ## Backlog / to-do
 - **Edit lock (done, soft).** The app loads read-only; a top-bar "🔒 View only" button prompts for a shared password to enable editing (paint/drag, add/edit/dup/delete, range). Password is stored as a SHA-256 hash in `APP_EDIT_HASH` (currently "FY27"); change it by hashing a new word (`printf '%s' 'NEW' | shasum -a 256`). While locked, `scheduleSave` no-ops so view tweaks (zoom/collapse) never persist. **This is UI-only — not real security:** the public source reveals the hash, and the anon key + disabled RLS still allow direct DB writes. For real protection, gate writes server-side (RLS read-only anon + an Edge Function that checks the password).
-- **Slack automation:** notify a channel when a campaign hits its end date; optionally a weekly digest and status-change alerts. Best as a scheduled job (Supabase Edge Function / cron / Make.com) reading the same `gtm-state` table — not browser-side, so it fires even when no one has the calendar open.
+- **Slack automation (done, live).** `scripts/notify-slack.mjs`, run daily by `.github/workflows/slack-notify.yml`. Reads the same `gtm-state` rows and posts per-market (webhook secrets `SLACK_WEBHOOK_ES` / `SLACK_WEBHOOK_IT` → channels `es-gtm` / `it-gtm`) on four triggers: briefing deadline, starts-in-3-days, starts-today, finished-today. It @-mentions only the owners of the channels actually painted on that campaign, plus a per-market `CC` list on every post. Only the three CONFIG blocks at the top of the script are meant to be edited.
+  - **Watch out — the schedule can die silently.** GitHub sets scheduled workflows on *public* repos to `disabled_inactivity` after 60 days with no repo activity. This already happened once (last commit 2026-07-06 → cron stopped 2026-09-05, unnoticed for 17 days, ~11 missed alerts). A keepalive step in the workflow now pushes an empty `[skip netlify]` commit if the newest commit is older than 45 days. To check by hand: `gh api repos/DiegoBCPM/gtm-calendar/actions/workflows --jq '.workflows[].state'`; to revive: `gh api --method PUT repos/DiegoBCPM/gtm-calendar/actions/workflows/305347595/enable` (needs the `DiegoBCPM` account — `gh auth switch --user DiegoBCPM`).
+  - **Known limitation:** GitHub queues public-repo schedules at low priority, so the 07:05 UTC cron has drifted as late as 19:23 UTC. If exact 09:05 CET delivery matters, move the trigger off GitHub cron (external cron → `workflow_dispatch`, or a Supabase scheduled function).
+  - **Known gap:** `briefingDueToday()` matches only `asset === "Briefing Deadline"`. Briefing bars painted on the category header row are saved as `asset: "__category__"` and never fire (live examples: ES "OUIGO Sep ODV TBC", IT "SNCF Christmas Seat Release"). `Briefing Delivery` is visual-only by design.
+- **Optional next for Slack:** weekly digest, status-change alerts, and a failure alert if the job errors or hasn't run in 48h.
 - Optional polish: replace native `confirm()`/`alert()` with in-page dialogs.
 - Possibly seed Italy with starter campaigns (currently empty).
 - (Separate, later) competitor price monitoring — check internal Trainline data access before any external scraping.

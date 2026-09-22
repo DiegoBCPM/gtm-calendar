@@ -6,12 +6,16 @@ on:
   schedule:
     # 07:05 UTC = 09:05 CET / 08:05 BST — runs every morning.
     # (GitHub cron is always UTC; the script computes "today" in Europe/Madrid.)
+    # NOTE: GitHub queues public-repo schedules at low priority, so the real
+    # run time drifts — it has landed anywhere from 07:39 to 19:23 UTC.
     - cron: "5 7 * * *"
   workflow_dispatch:        # lets you run it manually from the Actions tab to test
 
 jobs:
   notify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write       # needed only by the keepalive step below
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,3 +27,34 @@ jobs:
           SLACK_WEBHOOK_IT: ${{ secrets.SLACK_WEBHOOK_IT }}
           LEAD_DAYS: "3"
         run: node scripts/notify-slack.mjs
+
+      # ── KEEPALIVE ───────────────────────────────────────────────────────
+      # GitHub switches scheduled workflows on PUBLIC repos to
+      # "disabled_inactivity" after 60 days with no repo activity. That
+      # silently killed this job once: last commit 2026-07-06, so the cron
+      # stopped on 2026-09-05 and nobody noticed for 17 days (~11 missed
+      # alerts). Re-enabling by hand only buys another 60 quiet days.
+      #
+      # So: if the newest commit is older than KEEPALIVE_DAYS, push an empty
+      # commit to reset GitHub's clock. "[skip netlify]" keeps Netlify from
+      # rebuilding the site over a no-op commit. Normal development already
+      # resets the clock, so this only fires when the repo goes quiet.
+      #
+      # `always()` on purpose: the keepalive is the safety net, so a Slack or
+      # Supabase failure above must not also stop the schedule staying alive.
+      - name: Keepalive (reset GitHub's 60-day inactivity clock)
+        if: always() && github.event_name == 'schedule'
+        env:
+          KEEPALIVE_DAYS: "45"   # comfortably inside GitHub's 60-day limit
+        run: |
+          age=$(( ( $(date +%s) - $(git log -1 --format=%ct) ) / 86400 ))
+          echo "Newest commit is ${age} day(s) old (keepalive threshold: ${KEEPALIVE_DAYS})."
+          if [ "$age" -lt "$KEEPALIVE_DAYS" ]; then
+            echo "Repo is active — no keepalive needed."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "Keepalive: keep the Slack notifier schedule alive [skip netlify]"
+          git push
+          echo "Pushed an empty keepalive commit — schedule clock reset."
