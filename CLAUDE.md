@@ -30,7 +30,7 @@ Claude's artifact sandbox blocks `fetch()` to external domains (you get "Network
 ## Data model (per market)
 ```
 state = {
-  range: { from, to },         // financial-year window, e.g. 2026-02-01 → 2027-01-31
+  range: { from, to },         // visible window; `to` is a FLOOR, not a wall (see below)
   dayWidth,                    // zoom level (px per day)
   collapsedCategories: {},     // category collapse (global across campaigns)
   hiddenCategories: {},        // legend show/hide filters
@@ -46,6 +46,16 @@ Notes on campaign fields:
 - `hasPromo` / `promoDetail` / `promoUrl` — promotion flag + details + link. When `hasPromo`, a 🎁 Promo pill shows (clickable → `promoUrl`).
 - `briefingUrl` / `assetsUrl` — two separate links. Row buttons: 🔗 opens the briefing, 📎 opens the creative assets (each disabled when its URL is empty).
 - Campaigns are auto-sorted by `start` ascending on every render (earliest at top); manual ordering isn't persisted.
+
+### The window auto-grows (`range`)
+`range.from` anchors the grid and is **never** moved automatically: every bar is positioned at `dayIndex × dayWidth` measured from `from`, so shifting it would slide the whole grid and jump the reader's scroll.
+
+`range.to` is a **floor**. `autoGrowRange()` (called once per market load, from `migrate()`) widens it to the last day of the month *after* the latest date found in any campaign or activation. So the calendar can never open too small to show its own data — paint something in June 2027 and the timeline just grows to fit on next load.
+
+- It grows on **load only**, not on every render, so typing a narrower end date in the top bar still gives you a focused view for the session; reload restores the full window.
+- `MAX_SPAN_DAYS` (3 years from `from`) caps it. Without that, one campaign mistyped as ending in 2099 would ask the browser to lay out ~26,000 day columns and hang the tab. Past the cap, bars clip as before.
+- Current floor for both markets is `2027-02-28`. IT auto-grows past it to `2027-04-30`, because "CGN BAU" runs to 2027-03-31 — before this existed, that bar was being silently clipped at January.
+- **A true infinite/unbounded timeline would need virtualisation** (render only the visible days). Every day is a real DOM node in `headerHTML()`, and each lane is `numDays × dayWidth` wide, so unbounded growth eventually stalls the browser. The auto-grow floor gives the same practical result without that rework.
 
 Special activations:
 - `category: "campaign"` → painted on the campaign header row; rendered in the campaign's **brand colour**.

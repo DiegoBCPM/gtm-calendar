@@ -147,7 +147,7 @@ const uid = () => Math.random().toString(36).slice(2,9);
 
 function seedState(market){
   const base = {
-    range:{from:"2026-02-01",to:"2027-01-31"},
+    range:{from:"2026-02-01",to:"2027-02-28"},
     dayWidth:24, collapsedCategories:{}, hiddenCategories:{}, campaigns:[]
   };
   if(market === "ES"){
@@ -174,7 +174,7 @@ function seedState(market){
 }
 
 function migrate(s){
-  s.range = s.range||{from:"2026-02-01",to:"2027-01-31"};
+  s.range = s.range||{from:"2026-02-01",to:"2027-02-28"};
   s.dayWidth = s.dayWidth||24;
   s.collapsedCategories = s.collapsedCategories||{};
   s.hiddenCategories = s.hiddenCategories||{};
@@ -190,7 +190,59 @@ function migrate(s){
     briefingUrl:c.briefingUrl||"",
     assetsUrl:c.assetsUrl||""
   }));
+  autoGrowRange(s);   // make sure the window is wide enough to show every bar
   return s;
+}
+
+/* ── THE WINDOW GROWS ITSELF ──────────────────────────────────────────
+   `range.to` is a FLOOR, not a hard wall. On load the window is widened
+   to cover the latest painted date plus one whole month of breathing
+   room, so the calendar can never open too small to show its own data.
+
+   Why this exists: the window used to be a fixed financial-year box
+   (Feb 1 → Jan 31) and geo() clips anything past the end, so IT's
+   "CGN BAU" — which runs to 2027-03-31 — was having its bar silently
+   cut off at January with no hint that more existed.
+
+   Deliberately grows only on LOAD (this runs from migrate(), once per
+   market), not on every render: that way typing a narrower end date in
+   the top bar still works for a focused view, and you get the full
+   window back on reload.
+
+   `range.from` is deliberately never auto-grown. Every bar is placed at
+   (dayIndex × dayWidth) measured from `range.from`, so moving it would
+   shift the entire grid sideways and jump the reader's scroll position.
+
+   MAX_SPAN_DAYS is a typo guard: one campaign fat-fingered as ending in
+   2099 would otherwise ask the browser to lay out ~26,000 day columns
+   and hang the tab. Past the cap we stop growing and clip as before. */
+const MAX_SPAN_DAYS = 365 * 3;
+
+/* Latest date appearing anywhere in a market's data ("" if empty). */
+function dataEnd(s){
+  let last = "";
+  for(const c of (s.campaigns||[])){
+    if(c.end && c.end > last) last = c.end;
+    for(const a of (c.activations||[])) if(a.end && a.end > last) last = a.end;
+  }
+  return last;
+}
+
+/* Last day of the month AFTER `date` — a tidy edge to stop the timeline on. */
+function monthAfterEnd(date){
+  const d = parse(date);
+  return ymd(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+2, 0)));
+}
+
+/* Widen s.range.to to fit the data. Returns true if it moved. */
+function autoGrowRange(s){
+  const last = dataEnd(s);
+  if(!last || last <= s.range.to) return false;
+  const cap  = addDays(s.range.from, MAX_SPAN_DAYS - 1);
+  const want = monthAfterEnd(last) > cap ? cap : monthAfterEnd(last);
+  if(want <= s.range.to) return false;
+  s.range.to = want;
+  return true;
 }
 
 /* =====================================================
