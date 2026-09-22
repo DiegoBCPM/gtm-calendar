@@ -245,6 +245,59 @@ function autoGrowRange(s){
   return true;
 }
 
+/* First day of the month containing `date`. */
+function monthStart(date){
+  const d = parse(date);
+  return ymd(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)));
+}
+
+/* ── Fitting the window around dates somebody just typed ──────────────
+   autoGrowRange() only pushes `range.to` forward, and only on load.
+   That left two ways to lose a campaign entirely, both confirmed by
+   probing geo():
+     • dated entirely past `range.to`   → geo() returns null, so the row
+       appears in the left column with an empty lane and the bar shows
+       up only after a reload;
+     • dated entirely before `range.from` → invisible FOREVER, since
+       `from` is never auto-grown.
+   Straddling either edge is quieter but still wrong: the bar renders
+   clipped, so a campaign starting 15 Jan looks like it starts 1 Feb.
+
+   A campaign you cannot see is worse than a scroll jump, so the campaign
+   form calls this to open the window in whichever direction is needed.
+   Moving `from` is acceptable here in a way it isn't automatically: it
+   happens because someone just typed an earlier date, and the caller
+   scrolls to the campaign immediately afterwards.
+
+   Refuses instead of clamping when the result would exceed
+   MAX_SPAN_DAYS, so a mistyped year produces a readable message rather
+   than a silently clipped bar. */
+function fitWindowTo(start, end){
+  const growFrom = start < state.range.from;
+  const growTo   = end   > state.range.to;
+  if(!growFrom && !growTo) return { ok:true, moved:false };
+
+  // Judge the dates actually typed. The cosmetic month of padding added
+  // below must never be the thing that tips a campaign over the cap —
+  // otherwise entering a valid end date gets refused for a reason that
+  // isn't visible anywhere in the form.
+  const tightFrom = growFrom ? start : state.range.from;
+  const tightTo   = growTo   ? end   : state.range.to;
+  const span = diff(tightFrom, tightTo) + 1;
+  if(span > MAX_SPAN_DAYS) return { ok:false, span };
+
+  let from = growFrom ? monthStart(start)  : state.range.from;
+  let to   = growTo   ? monthAfterEnd(end) : state.range.to;
+  // Near the cap the padding itself can overflow. Drop it rather than
+  // trim it: trimming could cut back past the date that was typed and
+  // clip the very bar we're widening the window to show.
+  if(diff(from, to) + 1 > MAX_SPAN_DAYS){ from = tightFrom; to = tightTo; }
+
+  state.range.from = from;
+  state.range.to   = to;
+  return { ok:true, moved:true };
+}
+
 /* =====================================================
    6. STORAGE
    ===================================================== */
@@ -773,6 +826,14 @@ function openCampaignForm(cid){
     if(!name){err.textContent="Please enter a campaign name.";return;}
     if(!start||!end){err.textContent="Please set start and end dates.";return;}
     if(diff(start,end)<0){err.textContent="End date must be on or after start date.";return;}
+    // Open the timeline up if these dates fall outside it, so the campaign
+    // can't be saved into a window that doesn't show it (see fitWindowTo).
+    const fit=fitWindowTo(start,end);
+    if(!fit.ok){
+      err.textContent=`Those dates are too far out — the timeline would span `+
+        `${(fit.span/365.25).toFixed(1)} years (max 3). Check the year.`;
+      return;
+    }
     const data={name,start,end,
       mkFunds:scrim.querySelector("#f_mk").value==="yes",
       status:scrim.querySelector("#f_status").value,
@@ -788,6 +849,8 @@ function openCampaignForm(cid){
     if(editing) Object.assign(c,data);
     else state.campaigns.push({id:uid(),collapsed:false,activations:[],...data});
     close(); render(); scheduleSave();
+    // If the window just grew, the campaign is off-screen — go to it.
+    if(fit.moved) scroll.scrollLeft=Math.max(0,dayIndex(start)*state.dayWidth-260);
   });
 }
 

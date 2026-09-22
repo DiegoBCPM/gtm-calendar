@@ -52,9 +52,12 @@ Notes on campaign fields:
 
 `range.to` is a **floor**. `autoGrowRange()` (called once per market load, from `migrate()`) widens it to the last day of the month *after* the latest date found in any campaign or activation. So the calendar can never open too small to show its own data — paint something in June 2027 and the timeline just grows to fit on next load.
 
+`fitWindowTo()` handles the other half: when you type dates into the **campaign form** that fall outside the window, it opens the window in whichever direction is needed *before* saving — including **backwards**, which `autoGrowRange()` never does. Without it, `geo()` returned `null` and the campaign was saved fine but had no bar: dated past the end it reappeared only after a reload, and dated before `range.from` it was invisible permanently. Straddling an edge was quieter but still wrong — a campaign starting 15 Jan rendered as if it started 1 Feb. Moving `from` is acceptable there because it's the direct result of someone typing an earlier date, and the form scrolls to the campaign straight after.
+
 - It grows on **load only**, not on every render, so typing a narrower end date in the top bar still gives you a focused view for the session; reload restores the full window.
-- `MAX_SPAN_DAYS` (3 years from `from`) caps it. Without that, one campaign mistyped as ending in 2099 would ask the browser to lay out ~26,000 day columns and hang the tab. Past the cap, bars clip as before.
+- `MAX_SPAN_DAYS` (3 years) caps both. Without it, one campaign mistyped as ending in 2099 would ask the browser to lay out ~26,000 day columns and hang the tab. `autoGrowRange()` clips at the cap; `fitWindowTo()` instead **refuses** with an inline form error ("the timeline would span 73.1 years — check the year"), because a readable message beats a silently clipped bar. The cap is judged on the dates typed, never on the month of cosmetic padding — otherwise a valid end date gets refused for a reason invisible in the form.
 - Current floor for both markets is `2027-02-28`. IT auto-grows past it to `2027-04-30`, because "CGN BAU" runs to 2027-03-31 — before this existed, that bar was being silently clipped at January.
+- The **Slack notifier is unaffected** by the window either way — it reads `campaigns` straight from the row and only compares dates, so a campaign outside the visible range still fires normally.
 - **A true infinite/unbounded timeline would need virtualisation** (render only the visible days). Every day is a real DOM node in `headerHTML()`, and each lane is `numDays × dayWidth` wide, so unbounded growth eventually stalls the browser. The auto-grow floor gives the same practical result without that rework.
 
 Special activations:
