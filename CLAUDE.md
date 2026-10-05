@@ -82,7 +82,16 @@ Campaign status **auto-advances by date** via `effStatus()`: it shows **Live** o
 Legacy asset names auto-migrate via `ASSET_RENAME` in `migrate()` (old `TP - …` → `Top Banner - …`; `DAPS`/`APP` → `Mobile Marketing`), so previously painted bars aren't orphaned by the rename.
 
 ## Brand colours (campaign colour options)
-Trainline `#02a88f` · Renfe `#81015e` · Ouigo `#e3006a` · iryo `#d30e17` · Trenitalia `#006c67` · Italo `#a7160c` · Monetization `#383838` · Product `#1f03ff`
+Trainline `#02a88f` · Renfe `#81015e` · Ouigo `#e3006a` · iryo `#d30e17` · Trenitalia `#006c67` · Italo `#a7160c` · Monetization `#383838` · Product `#1f03ff` · **Betis** `#00954c` · **CRM** `#6d28d9`
+
+### Brands that restrict channels
+A `BRAND_PALETTE` entry may carry two optional fields:
+- `channels: ["CRM"]` — campaigns of this brand show **only** those channel rows. **Betis** and **CRM** (CRM as a *campaign type*, not the channel) are CRM-only: one row, its four assets, and deliberately **no Briefing row**, so they can't carry a briefing deadline or fire the briefing reminder. Their start / 3-day / finish alerts work normally. `campaignTaxonomy(c)` resolves this; a brand with no `channels`, no colour, or an off-palette hex gets the full taxonomy.
+- `dot` — a CSS background for the legend swatch instead of the flat colour. Betis uses the club's green-and-white stripes (`.brand-chip.striped` adds an inset ring so the white shows). A real crest would be a trademarked mark and illegible at 9px, and image files are against the conventions here.
+
+**The notifier mirrors this** via `BRAND_CHANNELS` in `scripts/notify-slack.mjs`, keyed by the same hexes — **keep the two in sync when adding a restricted brand.** Without it, a campaign moved onto a CRM-only brand keeps the bars it was painted with earlier: they stop showing in the calendar but the notifier would still read them and ping the SEO owner about a campaign with no SEO row. `activatedBuckets()` and `briefingDueToday()` both skip channels the brand doesn't use.
+
+Re-branding an existing campaign onto a restricted brand **hides, never deletes** its out-of-scope bars — the campaign form warns, naming how many bars and which channels, and switching the colour back brings them straight back.
 
 ## Conventions
 - Keep to the three files (`index.html` / `styles.css` / `app.js`). No build tooling, no dependencies.

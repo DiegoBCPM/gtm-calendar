@@ -182,6 +182,21 @@ const BUCKET_ORDER = ["SEO","MerchSlots","CRM","GrowthPPC","GrowthMM","Others"];
 // Growth "Mobile Marketing" had legacy names; treat them as MM too (see app.js migrate()).
 const MM_ASSETS = new Set(["Mobile Marketing","DAPS","APP"]);
 
+/* Brands whose campaigns only use SOME channels — mirrors the `channels`
+   field on BRAND_PALETTE in app.js. Keyed by brand colour, which is the
+   only brand handle a campaign carries.
+
+   This has to be here, not just in the calendar: if a campaign is moved
+   onto a CRM-only brand, bars painted earlier on SEO or Growth stay in
+   the data but stop being shown. Without this guard the notifier would
+   still read them and ping the SEO owner about a campaign whose calendar
+   row has no SEO line at all. */
+const BRAND_CHANNELS = {
+  "#00954c": ["CRM"],   // Betis
+  "#6d28d9": ["CRM"],   // CRM-as-a-campaign
+};
+const brandChannels = c => BRAND_CHANNELS[String(c.brandColor||"").toLowerCase()] || null;
+
 /* ---- date helpers (calendar dates, Europe/Madrid = Europe/Rome = CET) ---- */
 function todayStr(){
   return new Intl.DateTimeFormat("en-CA", {                 // en-CA → YYYY-MM-DD
@@ -197,10 +212,12 @@ function addDays(ymd, n){
 
 /* ---- which channel buckets are activated (painted) on a campaign? ---- */
 function activatedBuckets(c){
+  const allowed = brandChannels(c);
   const set = new Set();
   for(const a of (c.activations || [])){
     if(!a || !a.category) continue;
     if(a.category === "campaign") continue;               // campaign-level bar, not a channel
+    if(allowed && !allowed.includes(a.category)) continue; // hidden in the calendar → don't ping
     switch(a.category){
       case "SEO":        set.add("SEO"); break;
       case "MerchSlots": set.add("MerchSlots"); break;
@@ -268,6 +285,8 @@ function buildText(kind, market, c, extra={}){
 /* ---- is a "Briefing Deadline" bar dated today on this campaign? ---- */
 // Only the "Briefing Deadline" asset triggers Slack; "Briefing Delivery" is visual-only for now.
 function briefingDueToday(c, today){
+  const allowed = brandChannels(c);
+  if(allowed && !allowed.includes("Briefing")) return null;   // no Briefing row on this brand
   for(const a of (c.activations || [])){
     if(a && a.category === "Briefing" && a.asset === "Briefing Deadline" && a.start === today) return a;
   }

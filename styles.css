@@ -118,6 +118,8 @@ button{font-family:inherit;cursor:pointer}
 .brand-chip.on .bn{background:rgba(255,255,255,.18);border-color:transparent;color:#fff}
 .brand-chip.on:hover{background:#000}
 .brand-chip.empty{opacity:.34;cursor:default}
+/* Striped swatches (Betis) need an edge or the white stripes vanish. */
+.brand-chip.striped .bdot{box-shadow:inset 0 0 0 1px rgba(0,0,0,.22)}
 .brand-chip.clear{background:#fff;border-style:dashed;color:var(--muted);cursor:pointer}
 .brand-chip.clear:hover{color:var(--ink);border-color:var(--ink)}
 

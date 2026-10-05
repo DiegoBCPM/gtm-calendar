@@ -98,6 +98,14 @@ const BRAND_PALETTE = [
   {name:"Italo",       color:"#a7160c"},
   {name:"Monetization",color:"#383838"},
   {name:"Product",     color:"#1f03ff"},
+  // `channels` restricts which rows a campaign of this brand shows. Brands
+  // without it carry the whole TAXONOMY, which is every brand above.
+  // `dot` overrides the legend swatch — Betis gets the club's green-and-white
+  // stripes. (A real crest is a trademarked mark and would be mud at 9px;
+  // the stripes read as Betis and stay inside the no-image-files convention.)
+  {name:"Betis",       color:"#00954c", channels:["CRM"],
+   dot:"repeating-linear-gradient(90deg,#00954c 0 2.5px,#ffffff 2.5px 5px)"},
+  {name:"CRM",         color:"#6d28d9", channels:["CRM"]},
 ];
 
 /* =====================================================
@@ -392,6 +400,22 @@ function todayStr(){ const d=new Date(); return `${d.getFullYear()}-${String(d.g
 /* Does this campaign pass the brand filter? Empty filter = everything. */
 const brandMatch = c => !brandFilter.size || brandFilter.has(normCol(c.brandColor));
 
+/* The brand a campaign belongs to, by colour (null if it has none / an
+   unknown hex). Colour is the only brand handle a campaign carries. */
+const brandOf = c => BRAND_PALETTE.find(b=>normCol(b.color)===normCol(c.brandColor)) || null;
+
+/* Which channel rows this campaign shows. Most brands carry the full
+   taxonomy; brands with a `channels` list carry only those — a Betis or
+   CRM campaign is CRM-only, with no SEO/MerchSlots/Growth/Briefing rows. */
+function campaignTaxonomy(c){
+  const b=brandOf(c);
+  return (b && b.channels) ? TAXONOMY.filter(t=>b.channels.includes(t.cat)) : TAXONOMY;
+}
+
+/* Is this category one the campaign's brand actually uses? Used to keep
+   bars left over from an earlier brand out of the collapsed summary. */
+const catAllowed = (c,cat) => cat==="campaign" || campaignTaxonomy(c).some(t=>t.cat===cat);
+
 const findCampaign = id  => state.campaigns.find(c=>c.id===id);
 const findAct      = (cid,aid) => { const c=findCampaign(cid); return c&&c.activations.find(a=>a.id===aid); };
 
@@ -499,7 +523,7 @@ function campaignHTML(c){
     </div>
   </div>`;
   if(!c.collapsed){
-    for(const t of TAXONOMY){
+    for(const t of campaignTaxonomy(c)){
       if(state.hiddenCategories[t.cat]) continue;
       html += categoryHTML(c,t);
     }
@@ -512,7 +536,7 @@ function campaignLaneContent(c){
   const g=geo(dayIndex(c.start),dayIndex(c.end));
   const win=g?`<div class="cwin" style="left:${g.left}px;width:${g.width}px;border-color:${cc}55"></div>`:"";
   const bars=c.activations.filter(a=>a.category==="campaign").map(a=>barHTML(c.id,a,cc)).join("");
-  const mini=c.collapsed?c.activations.filter(a=>a.category!=="campaign").map(a=>{
+  const mini=c.collapsed?c.activations.filter(a=>a.category!=="campaign"&&catAllowed(c,a.category)).map(a=>{
     const ag=geo(dayIndex(a.start),dayIndex(a.end));
     return ag?`<div class="mini c-${a.category}" style="left:${ag.left}px;width:${ag.width}px;background:var(--cc)"></div>`:"";
   }).join(""):"";
@@ -591,21 +615,22 @@ function renderLegend(){
   const counts={};
   for(const c of state.campaigns) counts[normCol(c.brandColor)]=(counts[normCol(c.brandColor)]||0)+1;
 
-  const chipFor=(color,name)=>{
-    const n=counts[normCol(color)]||0, on=brandFilter.has(normCol(color));
-    const cls=["brand-chip",on?"on":"",n?"":"empty"].filter(Boolean).join(" ");
-    const tip=n ? `${n} campaign${n===1?"":"s"} — click to ${on?"stop showing":"show"} only ${name}`
-                : `No ${name} campaigns in this market`;
-    return `<span class="${cls}" ${n?`data-action="toggle-brand" data-col="${esc(color)}"`:""} title="${esc(tip)}">
-      <span class="bdot" style="background:${esc(color)||"#d1d5db"}"></span>${esc(name)}${n?`<span class="bn">${n}</span>`:""}</span>`;
+  const chipFor=b=>{
+    const n=counts[normCol(b.color)]||0, on=brandFilter.has(normCol(b.color));
+    const cls=["brand-chip",on?"on":"",n?"":"empty",b.dot?"striped":""].filter(Boolean).join(" ");
+    const only=b.channels?`  (${b.channels.join(", ")} only)`:"";
+    const tip=n ? `${n} campaign${n===1?"":"s"}${only} — click to ${on?"stop showing":"show"} only ${b.name}`
+                : `No ${b.name} campaigns in this market${only}`;
+    return `<span class="${cls}" ${n?`data-action="toggle-brand" data-col="${esc(b.color)}"`:""} title="${esc(tip)}">
+      <span class="bdot" style="background:${esc(b.dot||b.color)||"#d1d5db"}"></span>${esc(b.name)}${n?`<span class="bn">${n}</span>`:""}</span>`;
   };
 
-  let brands=BRAND_PALETTE.map(b=>chipFor(b.color,b.name)).join("");
+  let brands=BRAND_PALETTE.map(chipFor).join("");
   // Campaigns whose colour is "None", or some hex no longer in the palette,
   // would otherwise be unreachable by any chip — give them one too.
   const known=new Set(BRAND_PALETTE.map(b=>normCol(b.color)));
   const other=Object.keys(counts).filter(k=>!known.has(k));
-  if(other.length) brands += other.map(k=>chipFor(k,k?"Other":"No colour")).join("");
+  if(other.length) brands += other.map(k=>chipFor({color:k,name:k?"Other":"No colour"})).join("");
   if(brandFilter.size) brands += `<span class="brand-chip clear" data-action="clear-brands" title="Show every campaign again">✕ Clear</span>`;
 
   document.getElementById("legend").innerHTML=
@@ -875,6 +900,26 @@ function openCampaignForm(cid){
     if(!name){err.textContent="Please enter a campaign name.";return;}
     if(!start||!end){err.textContent="Please set start and end dates.";return;}
     if(diff(start,end)<0){err.textContent="End date must be on or after start date.";return;}
+    // Moving an existing campaign onto a restricted brand (Betis / CRM)
+    // hides any bars already painted on channels that brand doesn't use.
+    // Say so rather than letting them quietly vanish. Checked before
+    // fitWindowTo so backing out here leaves the window alone too.
+    if(editing){
+      const nb=BRAND_PALETTE.find(b=>normCol(b.color)===normCol(sel));
+      if(nb&&nb.channels){
+        const orphan=c.activations.filter(a=>a.category!=="campaign"&&!nb.channels.includes(a.category));
+        if(orphan.length){
+          const cats=[...new Set(orphan.map(a=>a.category))].join(", ");
+          const ok=confirm(
+            `"${nb.name}" campaigns only use ${nb.channels.join(", ")}.\n\n`+
+            `${orphan.length} bar${orphan.length===1?"":"s"} already painted on ${cats} `+
+            `will be hidden.\n\nThe bars stay in the data — switch the colour back and they `+
+            `reappear — and the Slack notifier ignores hidden channels, so nobody gets `+
+            `pinged for a row this campaign no longer shows.\n\nContinue?`);
+          if(!ok) return;
+        }
+      }
+    }
     // Open the timeline up if these dates fall outside it, so the campaign
     // can't be saved into a window that doesn't show it (see fitWindowTo).
     const fit=fitWindowTo(start,end);
