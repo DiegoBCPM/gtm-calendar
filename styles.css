@@ -108,6 +108,22 @@ button{font-family:inherit;cursor:pointer}
 .brand-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
   font-size:12px;font-weight:500;background:#f9fafb;border:1px solid var(--line);color:var(--ink)}
 .brand-chip .bdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+/* Brand chips filter the campaign list — clickable unless the brand has
+   no campaigns in this market (.empty). */
+.brand-chip[data-action]{cursor:pointer;user-select:none}
+.brand-chip[data-action]:hover{background:#fff;border-color:var(--line2)}
+.brand-chip .bn{font-size:10.5px;font-weight:700;color:var(--muted);
+  background:#fff;border:1px solid var(--line);border-radius:999px;padding:0 5px;margin-left:1px}
+.brand-chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.brand-chip.on .bn{background:rgba(255,255,255,.18);border-color:transparent;color:#fff}
+.brand-chip.on:hover{background:#000}
+.brand-chip.empty{opacity:.34;cursor:default}
+.brand-chip.clear{background:#fff;border-style:dashed;color:var(--muted);cursor:pointer}
+.brand-chip.clear:hover{color:var(--ink);border-color:var(--ink)}
+
+/* Shown in place of the rows when a filter matches nothing. */
+.no-match{padding:26px 22px;font-size:13px;color:var(--muted)}
+.no-match .lnk{color:var(--ink);font-weight:600;text-decoration:underline;cursor:pointer}
 
 /* ── 6. Scroll area + loading spinner ── */
 .scroll-wrap{flex:1;position:relative;overflow:hidden}

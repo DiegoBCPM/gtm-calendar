@@ -140,6 +140,16 @@ const ICON_AIRTABLE = `<svg class="ic-at" viewBox="0 0 200 170" width="15" heigh
    ===================================================== */
 const _states = { ES:null, IT:null };
 let activeMarket = "ES";
+
+/* Brand filter: the set of brand colours currently being shown alone.
+   Empty = show everything. Deliberately NOT part of `state`: unlike
+   hiddenCategories this never goes to Supabase, because a filter is a
+   personal view, not a team decision — otherwise one editor narrowing to
+   Renfe would leave everyone else staring at a near-empty calendar and
+   assuming data had gone missing. Keeping it local also means view-only
+   people can filter, which is most of the team. Resets on reload. */
+const brandFilter = new Set();
+const normCol = v => String(v||"").toLowerCase();   // palette hex vs stored hex
 let state = null;        // always === _states[activeMarket]
 let saveTimer = null;
 
@@ -336,6 +346,9 @@ function setSave(k){
 
 async function switchMarket(market){
   if(market===activeMarket) return;
+  // The brands differ per market (Renfe is Spain, Italo is Italy), so a
+  // filter carried across would land on an empty grid. Start clean.
+  brandFilter.clear();
   clearTimeout(saveTimer);
   if(canEdit) await dbSave(activeMarket, state);      // persist current before switching (edit mode only)
   activeMarket = market;
@@ -375,6 +388,9 @@ const clampIdx  = i  => Math.max(0, Math.min(maxIdx(), i));
 const inRange   = s  => diff(state.range.from,s)>=0 && diff(s,state.range.to)>=0;
 const esc       = s  => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function todayStr(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+
+/* Does this campaign pass the brand filter? Empty filter = everything. */
+const brandMatch = c => !brandFilter.size || brandFilter.has(normCol(c.brandColor));
 
 const findCampaign = id  => state.campaigns.find(c=>c.id===id);
 const findAct      = (cid,aid) => { const c=findCampaign(cid); return c&&c.activations.find(a=>a.id===aid); };
@@ -423,7 +439,11 @@ function render(){
   grid.style.setProperty("--tdyc", tShown?"var(--today-c)":"transparent");
 
   const flag = activeMarket==="ES"?"🇪🇸":"🇮🇹";
-  grid.innerHTML = headerHTML(nd,dw,tIdx,flag) + state.campaigns.map(campaignHTML).join("");
+  const shown = state.campaigns.filter(brandMatch);
+  const empty = (!shown.length && state.campaigns.length)
+    ? `<div class="no-match">No campaigns match this filter. <span class="lnk" data-action="clear-brands">Show all ${state.campaigns.length}</span></div>`
+    : "";
+  grid.innerHTML = headerHTML(nd,dw,tIdx,flag) + shown.map(campaignHTML).join("") + empty;
   renderLegend();
 }
 
@@ -565,7 +585,29 @@ function effStatus(c){
 function renderLegend(){
   const chips=TAXONOMY.map(t=>`<span class="chip ${state.hiddenCategories[t.cat]?"off":""}" data-action="toggle-legend" data-cat="${t.cat}">
     <span class="cdot" style="background:var(--${t.cat})"></span>${esc(t.label||t.cat)}</span>`).join("");
-  const brands=BRAND_PALETTE.map(b=>`<span class="brand-chip"><span class="bdot" style="background:${b.color}"></span>${b.name}</span>`).join("");
+  // How many campaigns each brand has IN THIS MARKET. Shown on the chip so
+  // it's obvious before clicking — and a brand with none (Renfe in Italy,
+  // say) is dimmed and inert rather than filtering the grid down to nothing.
+  const counts={};
+  for(const c of state.campaigns) counts[normCol(c.brandColor)]=(counts[normCol(c.brandColor)]||0)+1;
+
+  const chipFor=(color,name)=>{
+    const n=counts[normCol(color)]||0, on=brandFilter.has(normCol(color));
+    const cls=["brand-chip",on?"on":"",n?"":"empty"].filter(Boolean).join(" ");
+    const tip=n ? `${n} campaign${n===1?"":"s"} — click to ${on?"stop showing":"show"} only ${name}`
+                : `No ${name} campaigns in this market`;
+    return `<span class="${cls}" ${n?`data-action="toggle-brand" data-col="${esc(color)}"`:""} title="${esc(tip)}">
+      <span class="bdot" style="background:${esc(color)||"#d1d5db"}"></span>${esc(name)}${n?`<span class="bn">${n}</span>`:""}</span>`;
+  };
+
+  let brands=BRAND_PALETTE.map(b=>chipFor(b.color,b.name)).join("");
+  // Campaigns whose colour is "None", or some hex no longer in the palette,
+  // would otherwise be unreachable by any chip — give them one too.
+  const known=new Set(BRAND_PALETTE.map(b=>normCol(b.color)));
+  const other=Object.keys(counts).filter(k=>!known.has(k));
+  if(other.length) brands += other.map(k=>chipFor(k,k?"Other":"No colour")).join("");
+  if(brandFilter.size) brands += `<span class="brand-chip clear" data-action="clear-brands" title="Show every campaign again">✕ Clear</span>`;
+
   document.getElementById("legend").innerHTML=
     `<span class="leg-label">Channels</span><div style="display:flex;gap:5px">${chips}</div>
      <div class="spacer" style="flex:1"></div>
@@ -723,6 +765,13 @@ document.getElementById("app").addEventListener("click", async e=>{
     case "toggle-campaign":{ const c=findCampaign(cid); c.collapsed=!c.collapsed; render(); scheduleSave(); break; }
     case "toggle-category":{ const k=t.dataset.cat; state.collapsedCategories[k]=!state.collapsedCategories[k]; render(); scheduleSave(); break; }
     case "toggle-legend":{ const k=t.dataset.cat; state.hiddenCategories[k]=!state.hiddenCategories[k]; render(); scheduleSave(); break; }
+    // Brand filter is a local view: render() only, never scheduleSave().
+    case "toggle-brand":{
+      const k=normCol(t.dataset.col);
+      if(brandFilter.has(k)) brandFilter.delete(k); else brandFilter.add(k);
+      render(); break;
+    }
+    case "clear-brands": brandFilter.clear(); render(); break;
     case "zoom-in":  state.dayWidth=Math.min(MAX_DW,state.dayWidth+4); render(); scheduleSave(); break;
     case "zoom-out": state.dayWidth=Math.max(MIN_DW,state.dayWidth-4); render(); scheduleSave(); break;
     case "reload":   await loadState(); render(); break;

@@ -47,6 +47,11 @@ Notes on campaign fields:
 - `briefingUrl` / `assetsUrl` — two separate links. Row buttons: 🔗 opens the briefing, 📎 opens the creative assets (each disabled when its URL is empty).
 - Campaigns are auto-sorted by `start` ascending on every render (earliest at top); manual ordering isn't persisted.
 
+### Filtering by brand
+The brand chips on the right of the legend bar (Trainline, Renfe, Ouigo, …) are clickable filters: click one to show only that brand's campaigns, click more to add them (it's a union, not an intersection), and click again or hit **✕ Clear** to go back to everything. Each chip carries a count of that brand's campaigns *in the current market*; a brand with none (Renfe in Italy, Italo in Spain) is dimmed and inert, so a click can't empty the grid. Campaigns whose colour is "None" or some hex no longer in `BRAND_PALETTE` get their own chip, so they stay reachable.
+
+The filter lives in the module-level `brandFilter` set — deliberately **not** in `state`, so it never reaches Supabase. Unlike `hiddenCategories` a filter is a personal view, not a team decision: persisting it would let one editor narrow to Renfe and leave everyone else looking at a near-empty calendar assuming data had vanished. Keeping it local also means view-only users (most of the team) can filter. It resets on reload and on market switch, since the brands differ per market.
+
 ### The window auto-grows (`range`)
 `range.from` anchors the grid and is **never** moved automatically: every bar is positioned at `dayIndex × dayWidth` measured from `from`, so shifting it would slide the whole grid and jump the reader's scroll.
 
