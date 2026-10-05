@@ -100,12 +100,16 @@ const BRAND_PALETTE = [
   {name:"Product",     color:"#1f03ff"},
   // `channels` restricts which rows a campaign of this brand shows. Brands
   // without it carry the whole TAXONOMY, which is every brand above.
-  // `dot` overrides the legend swatch — Betis gets the club's green-and-white
-  // stripes. (A real crest is a trademarked mark and would be mud at 9px;
-  // the stripes read as Betis and stay inside the no-image-files convention.)
+  // `dot` overrides the swatch background, and its presence also switches the
+  // swatch to a shield outline (.crest) — so Betis reads as the club's
+  // green-and-white striped crest rather than a flat colour dot. Drawn in CSS
+  // on purpose: no image file (per the conventions) and no SVG ids to collide.
   {name:"Betis",       color:"#00954c", channels:["CRM"],
    dot:"repeating-linear-gradient(90deg,#00954c 0 2.5px,#ffffff 2.5px 5px)"},
-  {name:"CRM",         color:"#6d28d9", channels:["CRM"]},
+  // Named "CRM Campaign", not "CRM", so the campaign type can't be mistaken
+  // for the CRM *channel* it runs on. Renaming is free: campaigns store the
+  // brand's hex, never its name, so nothing has to migrate.
+  {name:"CRM Campaign", color:"#6d28d9", channels:["CRM"]},
 ];
 
 /* =====================================================
@@ -617,7 +621,7 @@ function renderLegend(){
 
   const chipFor=b=>{
     const n=counts[normCol(b.color)]||0, on=brandFilter.has(normCol(b.color));
-    const cls=["brand-chip",on?"on":"",n?"":"empty",b.dot?"striped":""].filter(Boolean).join(" ");
+    const cls=["brand-chip",on?"on":"",n?"":"empty",b.dot?"crest":""].filter(Boolean).join(" ");
     const only=b.channels?`  (${b.channels.join(", ")} only)`:"";
     const tip=n ? `${n} campaign${n===1?"":"s"}${only} — click to ${on?"stop showing":"show"} only ${b.name}`
                 : `No ${b.name} campaigns in this market${only}`;
@@ -842,7 +846,7 @@ function openCampaignForm(cid){
   const scrim=document.createElement("div"); scrim.className="scrim";
   const sw=[
     `<span class="swatch ${sel===""?"sel":""}" data-col="" style="background:#d1d5db" title="None"></span>`,
-    ...BRAND_PALETTE.map(b=>`<span class="swatch ${sel===b.color?"sel":""}" data-col="${b.color}" style="background:${b.color}" title="${b.name}"></span>`)
+    ...BRAND_PALETTE.map(b=>`<span class="swatch ${sel===b.color?"sel":""} ${b.dot?"crest":""}" data-col="${b.color}" style="background:${esc(b.dot||b.color)}" title="${esc(b.name)}"></span>`)
   ].join("");
   const title=readOnly?"Campaign info":(editing?"Edit campaign":"New campaign");
   scrim.innerHTML=`<div class="modal"><h2>${title}</h2>

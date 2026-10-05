@@ -193,7 +193,7 @@ const MM_ASSETS = new Set(["Mobile Marketing","DAPS","APP"]);
    row has no SEO line at all. */
 const BRAND_CHANNELS = {
   "#00954c": ["CRM"],   // Betis
-  "#6d28d9": ["CRM"],   // CRM-as-a-campaign
+  "#6d28d9": ["CRM"],   // "CRM Campaign" (the campaign type, not the channel)
 };
 const brandChannels = c => BRAND_CHANNELS[String(c.brandColor||"").toLowerCase()] || null;
 
