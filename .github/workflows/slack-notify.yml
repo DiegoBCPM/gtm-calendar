@@ -4,11 +4,35 @@ name: GTM Slack notifier
 # See scripts/notify-slack.mjs for the logic.
 on:
   schedule:
-    # 07:05 UTC = 09:05 CET / 08:05 BST — runs every morning.
-    # (GitHub cron is always UTC; the script computes "today" in Europe/Madrid.)
-    # NOTE: GitHub queues public-repo schedules at low priority, so the real
-    # run time drifts — it has landed anywhere from 07:39 to 19:23 UTC.
-    - cron: "5 7 * * *"
+    # 01:07 UTC — about 03:07 in Madrid (02:07 once winter time starts; the
+    # cron is fixed in UTC, so the local hour shifts with DST. The script
+    # itself always resolves "today" in Europe/Madrid, so only the trigger
+    # moves, never the dates it compares.)
+    #
+    # WHY SO EARLY, when the aim is a 09:00-ish Slack post:
+    # GitHub queues scheduled workflows on free public repos at the lowest
+    # priority, so a cron time is "no earlier than", never a promise. Measured
+    # over 29 runs of the old 07:05 UTC slot: median 5.5h late, p90 8.5h,
+    # worst 12.3h — every single run landed in the afternoon (13:14–21:23
+    # Madrid), which is useless for "this campaign goes live today".
+    #
+    # Scheduling early absorbs that delay instead of fighting it. Same delay
+    # distribution from 01:07 UTC puts delivery at ~08:37 Madrid (median) and
+    # 15:25 at the very worst, versus 14:35 / 21:23 before. The odd minute and
+    # the off-peak hour both help on their own: congestion is heaviest on the
+    # hour and during EU/US working hours, which is what GitHub's own docs
+    # advise avoiding.
+    #
+    # It also widens a safety margin. todayStr() resolves the date in Madrid
+    # AT RUN TIME, so a run delayed past Madrid midnight (22:00 UTC in summer,
+    # 23:00 in winter) would evaluate the WRONG day — and since each event
+    # fires on an exact date match with no "already notified" flag, those
+    # alerts would be lost rather than late, with nothing to warn anyone. From
+    # 07:05 UTC that cliff was 14.9h away; from 01:07 UTC it's 20.9h.
+    #
+    # Trade-off accepted: an early run can't see same-day edits. Paint a
+    # Briefing Deadline at 09:00 and it's picked up by the next day's run.
+    - cron: "7 1 * * *"
   workflow_dispatch:        # lets you run it manually from the Actions tab to test
 
 jobs:
